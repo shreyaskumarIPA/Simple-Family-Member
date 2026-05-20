@@ -1,0 +1,2340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patent Family Prosecution Analyser v2</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f4f6f9; color: #333; font-size: 13px; line-height: 1.4;
+        }
+
+        .top-bar {
+            background: white; border-bottom: 1px solid #e0e4e8;
+            padding: 10px 24px; display: flex; align-items: center;
+            justify-content: space-between; position: sticky; top: 0; z-index: 100;
+        }
+        .top-bar-left { display: flex; align-items: center; gap: 12px; }
+        .top-search-input {
+            border: none; font-size: 15px; font-weight: 500;
+            color: #333; outline: none; width: 300px;
+        }
+        .top-bar-right { display: flex; align-items: center; gap: 12px; }
+        .btn-search {
+            background: #00897b; color: white; border: none;
+            padding: 7px 18px; border-radius: 4px; font-size: 13px;
+            font-weight: 600; cursor: pointer;
+        }
+        .btn-search:hover { background: #00796b; }
+        .btn-demo {
+            background: #ff8f00; color: white; border: none;
+            padding: 7px 14px; border-radius: 4px; font-size: 12px;
+            font-weight: 600; cursor: pointer;
+        }
+        .btn-demo:hover { background: #f57c00; }
+        .user-info {
+            display: flex; align-items: center; gap: 8px;
+            border-left: 1px solid #e0e4e8; padding-left: 14px; cursor: pointer;
+        }
+        .user-avatar {
+            width: 30px; height: 30px; border-radius: 50%;
+            background: #00897b; color: white; display: flex;
+            align-items: center; justify-content: center;
+            font-size: 11px; font-weight: 700;
+        }
+        .user-name { font-weight: 500; color: #333; font-size: 13px; }
+        .user-dropdown { color: #999; font-size: 10px; }
+
+        .toolbar-section {
+            background: white; padding: 12px 24px; border-bottom: 1px solid #e0e4e8;
+            display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+        }
+        .toolbar-input {
+            padding: 7px 12px; border: 1px solid #d0d5dc;
+            border-radius: 4px; font-size: 12px; width: 240px;
+        }
+        .toolbar-input::placeholder { color: #aaa; }
+        .btn-report {
+            background: white; color: #00897b; border: 1px solid #00897b;
+            padding: 7px 16px; border-radius: 4px; font-size: 12px;
+            font-weight: 600; cursor: pointer;
+        }
+        .btn-report:hover { background: #e0f2f1; }
+        .btn-office-filter {
+            background: white; border: 1px solid #d0d5dc;
+            padding: 7px 14px; border-radius: 4px; font-size: 12px;
+            cursor: pointer; display: flex; align-items: center; gap: 6px;
+        }
+
+        .api-panel {
+            background: white; border: 1px solid #e0e4e8;
+            border-radius: 6px; margin: 16px 24px; overflow: hidden;
+        }
+        .api-panel summary {
+            padding: 10px 16px; cursor: pointer; font-size: 12px;
+            font-weight: 600; color: #666; background: #fafbfc;
+        }
+        .api-panel-body {
+            padding: 16px; display: grid;
+            grid-template-columns: 1fr 1fr auto; gap: 12px; align-items: end;
+        }
+        .api-panel-body label {
+            font-size: 11px; font-weight: 600; color: #555;
+            display: block; margin-bottom: 4px; text-transform: uppercase;
+        }
+        .api-panel-body input {
+            width: 100%; padding: 8px 10px; border: 1px solid #d0d5dc;
+            border-radius: 4px; font-size: 12px;
+        }
+        .btn-auth {
+            background: #00897b; color: white; border: none;
+            padding: 8px 16px; border-radius: 4px; font-size: 12px;
+            font-weight: 600; cursor: pointer; white-space: nowrap;
+        }
+        .api-status { padding: 8px 16px; font-size: 11px; border-top: 1px solid #e0e4e8; }
+        .api-status.connected { color: #2e7d32; background: #e8f5e9; }
+        .api-status.disconnected { color: #666; background: #fafafa; }
+        .helper-text { font-size: 11px; color: #888; padding: 8px 16px; border-top: 1px solid #eee; }
+        .helper-text a { color: #00897b; }
+        .helper-text code { background: #f0f0f0; padding: 1px 4px; border-radius: 2px; font-size: 10px; }
+
+        .ext-links-row {
+            padding: 8px 24px; display: none; gap: 8px;
+            flex-wrap: wrap; align-items: center;
+        }
+        .ext-links-row.active { display: flex; }
+        .ext-chip {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 5px 12px; background: white; border: 1px solid #d0d5dc;
+            border-radius: 20px; font-size: 11.5px; color: #555;
+            text-decoration: none; transition: all 0.15s;
+        }
+        .ext-chip:hover { border-color: #00897b; color: #00897b; background: #e0f2f1; }
+
+        .info-banner {
+            background: #e8f5e9; border-left: 4px solid #4caf50;
+            padding: 10px 16px; margin: 12px 24px; font-size: 12px;
+            color: #2e7d32; border-radius: 0 4px 4px 0; display: none;
+        }
+        .info-banner.active { display: block; }
+        .info-banner.error { background: #ffebee; border-left-color: #f44336; color: #c62828; }
+        .info-banner.warning { background: #fff3e0; border-left-color: #ff9800; color: #e65100; }
+
+        .results-info { padding: 12px 24px; display: none; }
+        .results-title { color: #00897b; font-size: 14px; font-weight: 700; margin-bottom: 2px; }
+        .results-summary { font-size: 12px; color: #00897b; }
+        .results-summary .count { font-weight: 700; }
+        .mat-inline {
+            background: #00897b; color: white; padding: 1px 5px;
+            border-radius: 3px; font-size: 10px; font-weight: 700;
+        }
+
+        .table-wrapper { padding: 0 24px 24px; overflow-x: auto; display: none; }
+        table {
+            width: 100%; border-collapse: collapse; background: white;
+            border-radius: 4px; overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08); min-width: 1100px;
+        }
+        thead th {
+            background: #fafbfc; padding: 10px 12px; text-align: left;
+            font-weight: 600; color: #555; font-size: 11px;
+            border-bottom: 2px solid #d0d5dc; white-space: nowrap;
+        }
+        tbody tr { border-bottom: 1px solid #eef0f3; transition: background 0.1s; }
+        tbody tr:hover { background: #f8fffe; }
+
+        /* Strong border between office groups */
+        tbody tr.office-first {
+            border-top: 2.5px solid #c0c8d0;
+        }
+        tbody tr.office-first td {
+            padding-top: 12px;
+        }
+
+        tbody td { padding: 9px 12px; vertical-align: top; font-size: 12px; }
+
+        /* Office cell with flag */
+        .office-cell {
+            display: flex; align-items: center; gap: 6px; white-space: nowrap;
+        }
+        .flag-img {
+            width: 20px; height: 14px; border-radius: 2px;
+            object-fit: cover; border: 1px solid #e0e0e0;
+        }
+        .office-code { font-weight: 600; color: #444; font-size: 12px; }
+
+        .app-num { color: #444; white-space: nowrap; font-size: 12px; }
+        .pub-num { color: #1a1a1a; font-weight: 600; white-space: nowrap; font-size: 12px; }
+        .date-cell { font-size: 11.5px; color: #555; white-space: nowrap; }
+
+        .fer-docs { display: flex; align-items: center; gap: 4px; }
+        .fer-icon {
+            width: 24px; height: 24px; border-radius: 3px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; text-decoration: none; font-size: 13px;
+            transition: all 0.15s;
+        }
+        .fer-icon:hover { transform: scale(1.15); }
+        .fer-icon.folder { background: #fff3e0; color: #e65100; }
+        .fer-icon.download { background: #e8f5e9; color: #2e7d32; }
+        .fer-icon.share { color: #757575; background: #f5f5f5; }
+        .mat-badge {
+            background: #00897b; color: white; padding: 2px 5px;
+            border-radius: 3px; font-size: 9px; font-weight: 700;
+        }
+
+        .last-update {
+            display: flex; align-items: center; gap: 4px;
+            font-size: 11.5px; color: #555; white-space: nowrap;
+        }
+        .check-green { color: #4caf50; font-size: 13px; }
+
+        .wrapper-btn {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 5px 12px; border-radius: 4px; font-size: 11px;
+            font-weight: 600; text-decoration: none; transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .wrapper-btn:hover { opacity: 0.85; transform: translateY(-1px); }
+        .wrapper-patentscope { background: #e3f2fd; color: #0d47a1; }
+        .wrapper-auspat { background: #e8f5e9; color: #1b5e20; }
+        .wrapper-epregister { background: #e8eaf6; color: #1a237e; }
+        .wrapper-globaldossier { background: #f3e5f5; color: #4a148c; }
+        .wrapper-ukipo { background: #fff3e0; color: #e65100; }
+
+        /* Last action - clean display */
+        .last-action-cell {
+            font-size: 11.5px; color: #444; max-width: 350px; line-height: 1.4;
+        }
+        .last-action-code {
+            display: inline-block;
+            font-family: 'SF Mono', 'Consolas', monospace; font-size: 10px;
+            background: #e8eaf6; color: #3949ab; padding: 1px 5px;
+            border-radius: 3px; font-weight: 600; margin-right: 6px;
+            vertical-align: middle;
+        }
+        .last-action-date-inline {
+            font-size: 10px; color: #888; margin-right: 4px;
+        }
+        .last-action-desc {
+            color: #333; font-size: 11.5px;
+        }
+
+        .loading-overlay { display: none; text-align: center; padding: 80px 20px; }
+        .loading-overlay.active { display: block; }
+        .spinner {
+            width: 36px; height: 36px; border: 3px solid #e0e5ec;
+            border-top-color: #00897b; border-radius: 50%;
+            animation: spin 0.8s linear infinite; margin: 0 auto 16px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-steps { margin-top: 16px; text-align: left; display: inline-block; }
+        .loading-step { font-size: 12px; color: #888; padding: 3px 0; }
+        .loading-step.done { color: #4caf50; }
+        .loading-step.active { color: #00897b; font-weight: 600; }
+
+        .export-menu { position: relative; display: inline-block; }
+        .export-dropdown {
+            display: none; position: absolute; top: 100%; left: 0;
+            background: white; border: 1px solid #ddd; border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 50; min-width: 160px;
+        }
+        .export-dropdown.active { display: block; }
+        .export-dropdown a { display: block; padding: 8px 14px; font-size: 12px; color: #333; text-decoration: none; }
+        .export-dropdown a:hover { background: #f5f5f5; }
+
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: white; border-radius: 8px; width: 90%; max-width: 750px;
+            max-height: 80vh; overflow: hidden; display: flex; flex-direction: column;
+        }
+        .modal-header {
+            padding: 16px 20px; border-bottom: 1px solid #e0e4e8;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .modal-header h3 { font-size: 14px; color: #333; }
+        .modal-close { cursor: pointer; font-size: 18px; color: #999; padding: 4px 8px; }
+        .modal-close:hover { color: #333; }
+        .modal-body { padding: 16px 20px; overflow-y: auto; flex: 1; }
+        .doc-list { list-style: none; }
+        .doc-list li {
+            padding: 8px 12px; border-bottom: 1px solid #f0f2f4;
+            display: flex; align-items: center; gap: 10px; font-size: 12px;
+        }
+        .doc-list li:hover { background: #f8fffe; }
+        .doc-list .doc-icon { font-size: 16px; flex-shrink: 0; }
+        .doc-list .doc-name { flex: 1; color: #333; }
+        .doc-list .doc-date { color: #888; font-size: 11px; white-space: nowrap; }
+        .doc-list .doc-download {
+            padding: 3px 8px; background: #e8f5e9; color: #2e7d32;
+            border-radius: 3px; text-decoration: none; font-size: 11px; font-weight: 600;
+        }
+        .doc-list .doc-download:hover { background: #c8e6c9; }
+
+        @media (max-width: 768px) {
+            .top-bar { flex-direction: column; gap: 8px; align-items: flex-start; }
+            .toolbar-section { flex-direction: column; align-items: flex-start; }
+            .api-panel-body { grid-template-columns: 1fr; }
+        }
+    
+.tab-bar {
+  display: flex;
+  gap: 8px;
+  padding: 12px 24px 0;
+  background: #f4f6f9;
+  border-bottom: 1px solid #e0e4e8;
+  flex-wrap: wrap;
+}
+.tab-btn {
+  appearance: none;
+  border: 1px solid #d0d5dc;
+  background: white;
+  color: #555;
+  padding: 9px 14px;
+  border-radius: 6px 6px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.tab-btn.active {
+  background: #00897b;
+  color: white;
+  border-color: #00897b;
+}
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+.bulk-shell { padding: 16px 24px 24px; }
+.bulk-panel {
+  background: white;
+  border: 1px solid #e0e4e8;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.bulk-panel-header {
+  padding: 16px 18px 10px;
+  border-bottom: 1px solid #eef0f3;
+}
+.bulk-panel-title { font-size: 15px; font-weight: 700; color: #333; margin-bottom: 4px; }
+.bulk-panel-subtitle { font-size: 12px; color: #666; }
+.bulk-controls {
+  padding: 16px 18px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.bulk-file-input {
+  border: 1px solid #d0d5dc;
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 12px;
+  min-width: 290px;
+  background: #fff;
+}
+.bulk-btn {
+  border: none;
+  border-radius: 6px;
+  padding: 9px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.bulk-btn.primary { background: #00897b; color: white; }
+.bulk-btn.primary:hover { background: #00796b; }
+.bulk-btn.secondary { background: #f4f6f9; color: #333; border: 1px solid #d0d5dc; }
+.bulk-btn.secondary:hover { background: #eef2f5; }
+.bulk-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.bulk-note {
+  margin: 0 18px 14px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: #fafbfc;
+  border: 1px solid #eef0f3;
+  color: #666;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+.bulk-divider {
+  padding: 0 18px 14px;
+  color: #888;
+  font-size: 11.5px;
+}
+.bulk-inline-row { padding: 0 18px 14px; }
+.bulk-inline-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #555;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.bulk-textarea {
+  width: 100%;
+  min-height: 140px;
+  resize: vertical;
+  border: 1px solid #d0d5dc;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 12px;
+  background: #fff;
+  line-height: 1.4;
+}
+.bulk-textarea::placeholder { color: #aaa; }
+.bulk-status {
+  margin: 0 18px 12px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: #f8fffe;
+  border: 1px solid #d7f0ec;
+  color: #00695c;
+  font-size: 12px;
+}
+.bulk-status.error { background: #ffebee; border-color: #ffcdd2; color: #b71c1c; }
+.bulk-status.warning { background: #fff8e1; border-color: #ffe082; color: #8d6e00; }
+.bulk-progress-wrap { padding: 0 18px 12px; }
+.bulk-progress-track { width: 100%; height: 10px; background: #eef2f5; border-radius: 999px; overflow: hidden; }
+.bulk-progress-bar { width: 0%; height: 100%; background: linear-gradient(90deg, #00897b, #26a69a); transition: width 0.2s ease; }
+.bulk-progress-meta { display: flex; justify-content: space-between; gap: 12px; margin-top: 8px; color: #666; font-size: 11.5px; }
+.bulk-summary { padding: 0 18px 14px; font-size: 12px; color: #444; }
+.bulk-preview-wrap { padding: 0 18px 18px; overflow-x: auto; }
+.bulk-preview-table { width: 100%; min-width: 760px; border-collapse: collapse; border: 1px solid #eef0f3; }
+.bulk-preview-table th, .bulk-preview-table td { border-bottom: 1px solid #eef0f3; padding: 8px 10px; text-align: left; font-size: 12px; vertical-align: top; }
+.bulk-preview-table th { background: #fafbfc; color: #555; font-size: 11px; font-weight: 700; }
+.bulk-preview-table tbody tr:hover { background: #f8fffe; }
+.bulk-chip { display: inline-block; margin: 2px 6px 2px 0; padding: 2px 6px; border-radius: 999px; background: #eef7f6; color: #00695c; font-size: 10.5px; font-weight: 600; white-space: nowrap; }
+.bulk-mono { font-family: 'SF Mono', 'Consolas', monospace; font-size: 11px; }
+.bulk-empty { color: #999; font-style: italic; }
+.bulk-accent-wo { color: #0d47a1; }
+@media (max-width: 768px) {
+  .tab-bar { padding-left: 16px; padding-right: 16px; }
+  .bulk-shell { padding-left: 16px; padding-right: 16px; }
+  .bulk-controls { flex-direction: column; align-items: stretch; }
+  .bulk-file-input { min-width: 0; width: 100%; }
+}
+
+
+.api-panel { display: none !important; }
+.office-count-inline { display:inline-block; padding:2px 10px; border-radius:999px; background:#eef2f5; color:#444; font-size:10px; font-weight:700; white-space:nowrap; margin-top:6px; }
+</style>
+</head>
+<body>
+
+<div class="top-bar single-only">
+    <div class="top-bar-left">
+        <span style="font-size:16px;">🔍</span>
+        <input type="text" class="top-search-input" id="pubNumber"
+               value="" placeholder="Enter a publication or application number...">
+    </div>
+    <div class="top-bar-right">
+        <button class="btn-search" onclick="searchFamily()">Search</button>
+        <div class="user-info" onclick="editUser()">
+            <div class="user-avatar" id="userAvatar">S</div>
+            <span class="user-name" id="userName">Shreyas</span>
+            <span class="user-dropdown">▾</span>
+        </div>
+    </div>
+</div>
+
+<div class="toolbar-section single-only">
+    <input type="text" class="toolbar-input" id="filterInput"
+           placeholder="Filter by application or publication number..."
+           oninput="filterTable()">
+ <button class="btn-office-filter" onclick="cycleOfficeFilter()">
+        <span>🏢</span>
+        <span id="officeFilterLabel">IP Offices: All</span>
+    </button>
+</div>
+
+<details class="api-panel single-only">
+    <summary>⚙️ EPO OPS API Configuration</summary>
+    <div class="api-panel-body">
+        <div><label>Consumer Key</label><input type="text" id="apiKey" placeholder="Your EPO OPS consumer key"></div>
+        <div><label>Consumer Secret</label><input type="password" id="apiSecret" placeholder="Your EPO OPS consumer secret"></div>
+        <button class="btn-auth" onclick="authenticate()">🔑 Connect</button>
+    </div>
+    <div class="api-status disconnected" id="apiStatus">⚪ Not connected</div>
+    <div class="helper-text">
+        Register free at <a href="https://developers.epo.org/" target="_blank">developers.epo.org</a>.
+        Uses <code>/family/.../biblio</code> + <code>/family/.../legal</code>.
+    </div>
+</details>
+
+<div class="tab-bar">
+ <button class="tab-btn active" id="tabBtnSingle" onclick="switchTab('single')">Single family lookup</button>
+ <button class="tab-btn" id="tabBtnBulk" onclick="switchTab('bulk')">Bulk family processor</button>
+ <button class="tab-btn" id="tabBtnWO" onclick="switchTab('wo')">WO-only bulk</button>
+ <button class="tab-btn" id="tabBtnWUEP" onclick="switchTab('wuep')">AU / WO / US / EP bulk</button>
+</div>
+<div id="singleTabPanel" class="tab-panel active">
+<div class="ext-links-row single-only" id="externalLinks">
+    <span style="font-size:11px; color:#888; margin-right:4px;">Open in:</span>
+    <a class="ext-chip" id="linkGlobalDossier" href="#" target="_blank">🌐 Global Dossier</a>
+    <a class="ext-chip" id="linkEspacenet" href="#" target="_blank">🔵 Espacenet</a>
+    <a class="ext-chip" id="linkEPRegister" href="#" target="_blank">🇪🇺 EP Register</a>
+    <a class="ext-chip" id="linkAusPat" href="#" target="_blank">🇦🇺 AusPat</a>
+    <a class="ext-chip" id="linkUSPTO" href="#" target="_blank">🇺🇸 Patent Center</a>
+    <a class="ext-chip" id="linkWIPO" href="#" target="_blank">🌍 PATENTSCOPE</a>
+    <a class="ext-chip" id="linkLens" href="#" target="_blank">🔍 The Lens</a>
+    <a class="ext-chip" id="linkGooglePatents" href="#" target="_blank">📖 Google Patents</a>
+</div>
+
+<div class="info-banner single-only" id="infoBanner"></div>
+
+<div class="results-info single-only" id="resultsInfo">
+    <div class="results-title" id="resultsTitle"></div>
+    <div class="results-summary" id="resultsSummary"></div>
+</div>
+
+<div class="loading-overlay single-only" id="loading">
+    <div class="spinner"></div>
+    <p style="color:#666; font-size:13px;">Searching patent family & prosecution history...</p>
+    <div class="loading-steps">
+        <div class="loading-step" id="step1">⏳ Querying INPADOC family (biblio)...</div>
+        <div class="loading-step" id="step2">⏳ Fetching legal status events...</div>
+        <div class="loading-step" id="step3">⏳ Building results...</div>
+    </div>
+</div>
+
+<div class="table-wrapper single-only" id="tableWrapper">
+    <table>
+        <thead>
+            <tr>
+                <th>Office</th>
+                <th>Application Number</th>
+                <th>Publication Number</th>
+                <th>Publication Date</th>
+                <th>FER Documents</th>
+                <th>Last Update</th>
+                <th>Last Action Date</th>
+                <th>File Wrapper</th>
+                <th>Last Action</th>
+            </tr>
+        </thead>
+        <tbody id="resultsBody"></tbody>
+    </table>
+</div>
+
+
+</div>
+<div id="bulkTabPanel" class="tab-panel">
+ <div class="bulk-shell">
+  <div class="bulk-panel">
+   <div class="bulk-panel-header">
+    <div class="bulk-panel-title">Bulk family publication consolidator</div>
+    <div class="bulk-panel-subtitle">Upload an Excel workbook with a <code>pams_application_number</code> column in column A, or paste a manual list. The tool queries the INPADOC family endpoint via EPO OPS and downloads a consolidated Excel with family publication numbers across adjacent columns.</div>
+   </div>
+   <div class="bulk-controls">
+    <input type="file" class="bulk-file-input" id="bulkExcelInput" accept=".xlsx,.xls,.csv" />
+    <button class="bulk-btn primary" id="bulkRunBtn" onclick="processBulkFamily()">Run bulk family analysis</button>
+    <button class="bulk-btn secondary" onclick="downloadBulkTemplate('bulk')">Download template</button>
+    <button class="bulk-btn secondary" id="bulkDownloadBtn" onclick="downloadBulkResults()" disabled>Download consolidated Excel</button>
+   </div>
+   <div class="bulk-divider"><strong>Or</strong> paste application numbers, one per line, and run without an Excel file.</div>
+   <div class="bulk-inline-row">
+    <div class="bulk-inline-label">Manual entry list</div>
+    <textarea class="bulk-textarea" id="bulkManualInput" placeholder="AU2020233341&#10;AU2020233342&#10;2020233343"></textarea>
+   </div>
+   <div class="bulk-note">
+    <strong>Expected input</strong><br>
+    • Uses the first worksheet if uploading Excel<br>
+    • Column A header should be <code>pams_application_number</code><br>
+    • Digits only values default to AU<br>
+    • If OPS returns <code>413</code>, the tool retries using a smaller family retrieval path
+   </div>
+   <div class="bulk-status" id="bulkStatus">No file or manual list loaded yet.</div>
+   <div class="bulk-progress-wrap">
+    <div class="bulk-progress-track"><div class="bulk-progress-bar" id="bulkProgressBar"></div></div>
+    <div class="bulk-progress-meta">
+      <span id="bulkProgressText">0 of 0 processed</span>
+      <span id="bulkProgressPct">0%</span>
+    </div>
+   </div>
+   <div class="bulk-summary" id="bulkSummary"></div>
+   <div class="bulk-preview-wrap">
+    <table class="bulk-preview-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>pams_application_number</th>
+          <th>Family publication numbers</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="bulkPreviewBody">
+        <tr><td colspan="4" class="bulk-empty">No bulk results yet.</td></tr>
+      </tbody>
+    </table>
+   </div>
+  </div>
+ </div>
+</div>
+<div id="woTabPanel" class="tab-panel">
+ <div class="bulk-shell">
+  <div class="bulk-panel">
+   <div class="bulk-panel-header">
+    <div class="bulk-panel-title">WO-only bulk processor</div>
+    <div class="bulk-panel-subtitle">A lighter tab that shortens load and payload. It only checks for WO publication numbers and returns them in <strong>column B</strong> of the consolidated output workbook.</div>
+   </div>
+   <div class="bulk-controls">
+    <input type="file" class="bulk-file-input" id="woExcelInput" accept=".xlsx,.xls,.csv" />
+    <button class="bulk-btn primary" id="woRunBtn" onclick="processWOBulk()">Run WO-only check</button>
+    <button class="bulk-btn secondary" onclick="downloadBulkTemplate('wo')">Download WO template</button>
+    <button class="bulk-btn secondary" id="woDownloadBtn" onclick="downloadWOResults()" disabled>Download WO Excel</button>
+   </div>
+   <div class="bulk-divider"><strong>Or</strong> paste application numbers, one per line, and run without an Excel file.</div>
+   <div class="bulk-inline-row">
+    <div class="bulk-inline-label">Manual entry list</div>
+    <textarea class="bulk-textarea" id="woManualInput" placeholder="AU2020233341&#10;AU2020233342&#10;2020233343"></textarea>
+   </div>
+   <div class="bulk-note">
+    <strong>WO-only behaviour</strong><br>
+    • Uses the lighter family endpoint without <code>/biblio</code> first<br>
+    • Parses only WO publication references from the family response<br>
+    • Output workbook has column A = <code>pams_application_number</code>, column B = <code>wo_publication_number</code><br>
+    • If multiple WO numbers are found, they are concatenated into column B using <code>; </code>
+   </div>
+   <div class="bulk-status" id="woStatus">No file or manual list loaded yet.</div>
+   <div class="bulk-progress-wrap">
+    <div class="bulk-progress-track"><div class="bulk-progress-bar" id="woProgressBar"></div></div>
+    <div class="bulk-progress-meta">
+      <span id="woProgressText">0 of 0 processed</span>
+      <span id="woProgressPct">0%</span>
+    </div>
+   </div>
+   <div class="bulk-summary" id="woSummary"></div>
+   <div class="bulk-preview-wrap">
+    <table class="bulk-preview-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>pams_application_number</th>
+          <th>WO publication number</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="woPreviewBody">
+        <tr><td colspan="4" class="bulk-empty">No WO results yet.</td></tr>
+      </tbody>
+    </table>
+   </div>
+  </div>
+ </div>
+</div>
+
+</div>
+<div id="wuepTabPanel" class="tab-panel">
+ <div class="bulk-shell">
+  <div class="bulk-panel">
+   <div class="bulk-panel-header">
+    <div class="bulk-panel-title">AU / WO / US / EP bulk processor</div>
+    <div class="bulk-panel-subtitle">A staged bulk tab that checks for WO, US and EP publication numbers using the same family biblio logic as the family bulk tab, then filters those family publications into adjacent office columns.</div>
+   </div>
+   <div class="bulk-controls">
+    <input type="file" class="bulk-file-input" id="wuepExcelInput" accept=".xlsx,.xls,.csv" />
+    <button class="bulk-btn primary" id="wuepRunBtn" onclick="processWUEPBulk()">Run AU / WO / US / EP check</button>
+    <button class="bulk-btn secondary" id="wuepPauseBtn" onclick="pauseWUEPRun()" disabled>Stop batch run</button>
+    <button class="bulk-btn secondary" id="wuepResumeBtn" onclick="resumeWUEPRun()" disabled>Resume batch run</button>
+    <button class="bulk-btn secondary" onclick="downloadBulkTemplate('wuep')">Download AU / WO / US / EP template</button>
+    <button class="bulk-btn secondary" id="wuepDownloadBtn" onclick="downloadWUEPResults()" disabled>Download AU / WO / US / EP Excel</button>
+   </div>
+   <div class="bulk-divider"><strong>Or</strong> paste application numbers, one per line, and run without an Excel file.</div>
+   <div class="bulk-inline-row">
+    <div class="bulk-inline-label">Manual entry list</div>
+    <textarea class="bulk-textarea" id="wuepManualInput" placeholder="AU2020233341&#10;AU2020233342&#10;2020233343"></textarea>
+   </div>
+   <div class="bulk-note">
+    <strong>AU / WO / US / EP behaviour</strong><br>
+    • API credentials are embedded in this build and the API panel is hidden<br>
+    • Uses family biblio first, then filters family publication numbers to AU, WO, US and EP only<br>
+    • For US and EP, publications ending with a bare <code>W</code>, <code>P</code>, <code>A</code>, <code>S</code>, <code>F</code> or <code>D</code> are excluded from every tab and bulk result. For AU, publications ending with <code>%</code> or a bare <code>A</code> are excluded from every tab and bulk result<br>
+    • Output workbook columns are <code>pams_application_number</code>, <code>au_publications</code>, <code>wo_publications</code>, <code>us_publications</code> and <code>ep_publications</code><br>
+    • Multiple publications inside the same office column are separated with line breaks inside the cell<br>
+    • The preview shows the current batch only, then switches to the next batch when the next batch starts<br>
+    • Queries are staged in batches of 100, then the tool pauses for 2 minutes before starting the next batch
+   </div>
+   <div class="bulk-status" id="wuepStatus">No file or manual list loaded yet.</div>
+   <div class="bulk-progress-wrap">
+    <div class="bulk-progress-track"><div class="bulk-progress-bar" id="wuepProgressBar"></div></div>
+    <div class="bulk-progress-meta">
+      <span id="wuepProgressText">0 of 0 processed</span>
+      <span id="wuepProgressPct">0%</span>
+    </div>
+   </div>
+   <div class="bulk-summary" id="wuepSummary"></div>
+   <div class="bulk-preview-wrap">
+    <table class="bulk-preview-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>pams_application_number</th>
+          <th>AU publications</th>
+          <th>WO publications</th>
+          <th>US publications</th>
+          <th>EP publications</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="wuepPreviewBody">
+        <tr><td colspan="7" class="bulk-empty">No AU / WO / US / EP results yet.</td></tr>
+      </tbody>
+    </table>
+   </div>
+  </div>
+ </div>
+</div>
+<div class="modal-overlay" id="docModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 id="docModalTitle">Documents & Legal Events</h3>
+            <span class="modal-close" onclick="closeDocModal()">✕</span>
+        </div>
+        <div class="modal-body" id="docModalBody"></div>
+    </div>
+</div>
+
+<div style="text-align:center; padding:24px; color:#999; font-size:11px;">
+    Patent Family Prosecution Analyser v2 | EPO OPS /biblio + /legal | Deterministic FER linking
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js">
+// AU / WO / US / EP input wiring
+document.getElementById('wuepExcelInput').addEventListener('change', function(){
+ if (this.files && this.files[0]) {
+  wuepSourceFileName = this.files[0].name;
+  setWUEPStatus('Selected file: ' + this.files[0].name, '');
+  const t = document.getElementById('wuepManualInput'); if (t) t.value = '';
+ } else {
+  setWUEPStatus('No file or manual list loaded yet.', '');
+ }
+});
+document.getElementById('wuepManualInput').addEventListener('input', function(){
+ const hasText = (this.value || '').trim().length > 0;
+ if (hasText) {
+  const f = document.getElementById('wuepExcelInput'); if (f) f.value = '';
+  wuepSourceFileName = 'manual-entry';
+  setWUEPStatus('Manual list ready. Click Run AU / WO / US / EP check.', '');
+ }
+});
+</script>
+<script>
+// ============================================
+// PATENT FAMILY PROSECUTION ANALYSER v2
+// ============================================
+
+let familyData = [];
+let legalEvents = {};
+let accessToken = null;
+let currentOfficeFilter = '';
+const officeOptions = ['All','WO','AU','US','EP','CN','JP','KR','CA','IN','TW','GB'];
+let officeFilterIdx = 0;
+let activeTab = 'single';
+let bulkRows = [];
+let bulkOutputRows = [];
+let bulkSourceFileName = '';
+let bulkIsProcessing = false;
+let woRows = [];
+let woOutputRows = [];
+let woSourceFileName = '';
+let woIsProcessing = false;
+let wuepRows = [];
+let wuepOutputRows = [];
+let wuepCurrentBatchRows = [];
+let wuepSourceFileName = "";
+let wuepIsProcessing = false;
+let wuepPauseRequested = false;
+let wuepPaused = false;
+let accessTokenExpiresAt = 0;
+const BULK_BATCH_SIZE = 100;
+const BULK_BATCH_PAUSE_MS = 120000;
+const HARD_CODED_API_KEY_B64 = "T2ZGeE1tMGNqVW5vdlE0eUFjMXhBdjlqUFVYTUZjYUwzVm9tUVpWMXlZU2NTSWhH";
+const HARD_CODED_API_SECRET_B64 = "Z0pqMzUxM2J0aG9YNm8xOUNRVWV3VE9PNHdHOW1HRzZKOE5OSnVrZ1pEbW5TR0FCTm9jQjREdWQxRkRGSUdDUQ==";
+
+// ===== FLAG URLS using flagcdn.com =====
+function getFlagUrl(code) {
+    const map = {
+        'WO': null, // Use emoji for WO
+        'US': 'us', 'EP': 'eu', 'AU': 'au', 'CN': 'cn', 'JP': 'jp',
+        'KR': 'kr', 'CA': 'ca', 'IN': 'in', 'TW': 'tw', 'GB': 'gb',
+        'DE': 'de', 'FR': 'fr', 'BR': 'br', 'IL': 'il', 'SG': 'sg',
+        'NZ': 'nz', 'MX': 'mx', 'RU': 'ru', 'ZA': 'za'
+    };
+    const cc = map[code];
+    if (!cc) return null;
+    return `https://flagcdn.com/w40/${cc}.png`;
+}
+
+function getFlagHtml(code) {
+    const url = getFlagUrl(code);
+    if (url) {
+        return `<img src="${url}" alt="${code}" class="flag-img" onerror="this.outerHTML='🌐'">`;
+    }
+    return '<span style="font-size:16px;">🌐</span>';
+}
+
+// ===== DETERMINISTIC LINK BUILDERS =====
+function buildFERLink(item) {
+    const office = item.office;
+    const appNum = extractAppNumber(item);
+    const pubNumClean = extractPubNumber(item);
+
+    switch (office) {
+        case 'EP': return `https://register.epo.org/application?number=EP${appNum}&lng=en&tab=doclist`;
+        case 'AU': return `https://wb-container-app.patents.prod.aws.ipaustralia.gov.au/view-docs/${appNum}`;
+        case 'US': return `https://register.epo.org/ipfwretrieve?apn=US.${appNum}.A/ifw/docs`;
+        case 'JP': return `https://register.epo.org/ipfwretrieve?apn=JP.${appNum}.A&lng=en`;
+        case 'KR': return `https://register.epo.org/ipfwretrieve?apn=KR.${appNum}.A&lng=en`;
+        case 'CN': return `https://register.epo.org/ipfwretrieve?apn=CN.${appNum}.A&lng=en`;
+        case 'CA': return `https://register.epo.org/ipfwretrieve?apn=CA.${appNum}.A&lng=en`;
+        case 'GB': return `https://www.search-for-intellectual-property.service.gov.uk/${item.publicationNumber}/documents`;
+        case 'WO': return `https://patentscope.wipo.int/search/en/detail.jsf?docId=WO${pubNumClean}&recNum=1&tab=Documents`;
+        default: return `https://register.epo.org/ipfwretrieve?apn=${office}.${appNum}.A&lng=en`;
+    }
+}
+
+function buildFileWrapperUrl(item) { return buildFERLink(item); }
+
+function extractAppNumber(item) {
+    let raw = item.applicationNumber || '';
+    if (raw.startsWith('PCT/')) { raw = raw.replace(/^PCT\//, '').replace(/\//g, '').replace(/^[A-Z]{2}/, ''); return raw; }
+    const m = raw.match(/^[A-Z]{2}(.+)$/);
+    return m ? m[1] : raw.replace(/[^0-9]/g, '');
+}
+
+function extractPubNumber(item) {
+    let raw = item.publicationNumber || '';
+    if (item.office === 'WO') return raw.replace(/^WO/, '').replace(/[A-Z]\d?$/, '');
+    return raw.replace(/^[A-Z]{2}/, '');
+}
+
+function buildGlobalDossierUrl(item) {
+    if (item.globalDossierUrl) return item.globalDossierUrl;
+    return `https://globaldossier.uspto.gov/#!/result/application/${item.office}/${extractAppNumber(item)}/1`;
+}
+
+function getEspacenetUrl(pubNum) { return `https://worldwide.espacenet.com/patent/search?q=pn%3D${pubNum}`; }
+
+function getWrapperLabel(office) {
+    return { 'EP':'EP Register', 'AU':'AusPat Docs', 'US':'EP Register', 'JP':'EP Register',
+             'KR':'EP Register', 'CN':'EP Register', 'CA':'EP Register',
+             'GB':'UK IPO', 'WO':'PATENTSCOPE', 'TW':'Global Dossier' }[office] || 'EP Register';
+}
+function getWrapperClass(office) {
+    return { 'EP':'wrapper-epregister', 'AU':'wrapper-auspat', 'US':'wrapper-epregister',
+             'JP':'wrapper-epregister', 'KR':'wrapper-epregister', 'CN':'wrapper-epregister',
+             'CA':'wrapper-epregister', 'GB':'wrapper-ukipo',
+             'WO':'wrapper-patentscope', 'TW':'wrapper-globaldossier' }[office] || 'wrapper-epregister';
+}
+
+// ===== UTILITY =====
+function normaliseNumber(input) {
+    let num = input.trim().toUpperCase().replace(/\s+/g, '');
+    if (!num.startsWith('AU') && /^\d/.test(num)) num = 'AU' + num;
+    return num;
+}
+
+function formatDateStr(dateStr) {
+    if (!dateStr || dateStr.length < 8) return '';
+    const clean = dateStr.replace(/-/g, '');
+    if (/^\d{8}$/.test(clean)) {
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        return `${parseInt(clean.substring(6,8))} ${months[parseInt(clean.substring(4,6))-1]} ${clean.substring(0,4)}`;
+    }
+    return dateStr;
+}
+
+function guessStatus(kind) {
+    if (['B','B1','B2','B8','B9','C','C1','C2'].includes(kind)) return 'Granted';
+    if (['A','A1','A2','A3','A4','A8','A9','U'].includes(kind)) return 'Published';
+    return 'Unknown';
+}
+
+// ===== CLEAN LEGAL EVENT DESCRIPTION =====
+// Parse the raw EPO legal text and extract just the meaningful action
+function cleanLegalDescription(rawDesc, code) {
+    if (!rawDesc) return code || '';
+
+    // Known code mappings for clean display
+    const codeDescriptions = {
+        'FGA': 'Patent granted / sealed',
+        'NENP': 'National phase entry expired',
+        'NOA': 'Notice of Allowance',
+        'ISSUE': 'Patent issued',
+        'PUB': 'Application published',
+        'C01': 'Patent granted',
+        'REG': 'Registration',
+        'RD02': 'Decision to grant',
+        'R150': 'Patent registered',
+        'E701': 'Decision on registration',
+        'E902': 'Notification of reason for refusal',
+        'AK': 'Designated states published',
+        'AS': 'Assignment / ownership transfer',
+        'PB01': 'Publication',
+        'GR01': 'Patent granted',
+        'CB02': 'Change of applicant',
+        'SE01': 'Substantive examination request',
+        'STPP': 'Status changed - prosecution',
+    };
+
+    // If we have a known clean description for this code, prefer that
+    if (code && codeDescriptions[code]) {
+        // But still try to extract useful detail from raw
+        const detail = extractKeyDetail(rawDesc);
+        if (detail) return codeDescriptions[code] + ' — ' + detail;
+        return codeDescriptions[code];
+    }
+
+    // Try to extract the meaningful part from raw verbose text
+    const cleaned = extractKeyDetail(rawDesc);
+    return cleaned || rawDesc.substring(0, 80) + (rawDesc.length > 80 ? '...' : '');
+}
+
+function extractKeyDetail(rawDesc) {
+    if (!rawDesc) return '';
+
+    // Common patterns in EPO legal text:
+    // "CN202080018251A 2021-10-22PB01 PUBLICATION | CN | F | 20208001825..."
+    // Try to find the meaningful description between known markers
+
+    // Pattern: Look for uppercase description after date+code
+    // e.g., "NOTIFICATION OF REASON FOR REFUSAL"
+    const descPatterns = [
+        /NOTIFICATION[^|]*/i,
+        /DECISION[^|]*/i,
+        /GRANT[^|]*/i,
+        /PATENT SEALED[^|]*/i,
+        /LETTERS PATENT[^|]*/i,
+        /ASSIGNMENT[^|]*(?:OWNER|ASSIGNOR)[^|]*/i,
+        /PUBLICATION[^|]*/i,
+        /ACCEPTANCE[^|]*/i,
+        /ALLOWANCE[^|]*/i,
+    ];
+
+    for (const pat of descPatterns) {
+        const match = rawDesc.match(pat);
+        if (match) {
+            let result = match[0].trim();
+            // Clean up trailing pipes, dates, etc.
+            result = result.replace(/\s*\|.*$/, '').trim();
+            if (result.length > 5 && result.length < 100) return result;
+        }
+    }
+
+    // If it starts with a known format like "FGA +LETTERS PATENT SEALED..."
+    const fgaMatch = rawDesc.match(/FGA\s*\+?(.+?)(?:\s*\(|$|\|)/i);
+    if (fgaMatch) return fgaMatch[1].trim();
+
+    // Just take first segment before pipe or long number sequence
+    const segments = rawDesc.split(/\s*\|\s*/);
+    if (segments.length > 0) {
+        let first = segments[0].trim();
+        // Remove leading pub number + date pattern
+        first = first.replace(/^[A-Z]{2}\d+[A-Z]?\d?\s+\d{4}-\d{2}-\d{2}/, '').trim();
+        // Remove leading code
+        first = first.replace(/^[A-Z]\d{0,3}\s+/, '').trim();
+        if (first.length > 5 && first.length < 120) return first;
+    }
+
+    // Fallback: first 60 chars
+    return rawDesc.substring(0, 60).trim() + (rawDesc.length > 60 ? '…' : '');
+}
+
+// ===== USER =====
+function detectUser() {
+    const stored = localStorage.getItem('patentAnalyser_user');
+    updateUserDisplay(stored || 'Shreyas');
+}
+function updateUserDisplay(name) {
+    const parts = name.trim().split(/\s+/);
+    const initials = parts.map(p => p.charAt(0).toUpperCase()).join('').substring(0, 2);
+    document.getElementById('userName').textContent = name;
+    document.getElementById('userAvatar').textContent = initials || 'U';
+    if (name !== 'User') localStorage.setItem('patentAnalyser_user', name);
+}
+function editUser() {
+    const current = localStorage.getItem('patentAnalyser_user') || '';
+    const name = prompt('Enter your name:', current);
+    if (name && name.trim()) updateUserDisplay(name.trim());
+}
+
+// ===== EPO OPS API =====
+function decodeEmbeddedValue(b64) {
+ try { return atob(b64); } catch(e) { return ''; }
+}
+function initHardcodedApiCredentials() {
+ const keyInput = document.getElementById('apiKey');
+ const secretInput = document.getElementById('apiSecret');
+ if (keyInput) keyInput.value = decodeEmbeddedValue(HARD_CODED_API_KEY_B64);
+ if (secretInput) secretInput.value = decodeEmbeddedValue(HARD_CODED_API_SECRET_B64);
+}
+async function authenticate() {
+ const key = (document.getElementById('apiKey').value || decodeEmbeddedValue(HARD_CODED_API_KEY_B64)).trim();
+ const secret = (document.getElementById('apiSecret').value || decodeEmbeddedValue(HARD_CODED_API_SECRET_B64)).trim();
+ if (!key || !secret) { updateApiStatus(false, 'Enter both key and secret'); return false; }
+ try {
+  const resp = await fetch('https://ops.epo.org/3.2/auth/accesstoken', {
+   method: 'POST',
+   headers: { 'Authorization': 'Basic ' + btoa(key + ':' + secret), 'Content-Type': 'application/x-www-form-urlencoded' },
+   body: 'grant_type=client_credentials'
+  });
+  if (resp.ok) {
+   const d = await resp.json();
+   accessToken = d.access_token;
+   const expiresInSec = parseInt(d.expires_in || '0', 10) || 0;
+   accessTokenExpiresAt = Date.now() + Math.max(0, (expiresInSec - 60)) * 1000;
+   updateApiStatus(true, 'Connected, embedded credentials loaded');
+   return true;
+  }
+  throw new Error(`HTTP ${resp.status}`);
+ } catch(e) {
+  updateApiStatus(false, 'Failed: ' + e.message);
+  return false;
+ }
+}
+function updateApiStatus(c, m) {
+ const el = document.getElementById('apiStatus');
+ el.className = 'api-status ' + (c ? 'connected' : 'disconnected');
+ el.textContent = (c ? '🟢 ' : '🔴 ') + m;
+}
+async function ensureAuthenticated(forceRefresh) {
+ const expiredOrMissing = !accessToken || !accessTokenExpiresAt || Date.now() >= accessTokenExpiresAt;
+ if (forceRefresh || expiredOrMissing) {
+  const ok = await authenticate();
+  if (!ok) throw new Error('Not authenticated');
+ }
+}
+async function apiCall(url, xml) {
+ await ensureAuthenticated(false);
+ const headers = { 'Authorization': 'Bearer ' + accessToken, 'Accept': xml ? 'application/xml' : 'application/json' };
+ let r = await fetch(url, { headers });
+ let bodyText = '';
+ if (r.status === 404) return null;
+ if (r.ok) return xml ? await r.text() : await r.json();
+ try { bodyText = await r.text(); } catch(e) {}
+ const invalidToken = r.status === 400 && /invalid_access_token/i.test(bodyText || '');
+ if (r.status === 401 || r.status === 403 || invalidToken) {
+  await ensureAuthenticated(true);
+  const retryHeaders = { 'Authorization': 'Bearer ' + accessToken, 'Accept': xml ? 'application/xml' : 'application/json' };
+  r = await fetch(url, { headers: retryHeaders });
+  if (r.status === 404) return null;
+  if (r.ok) return xml ? await r.text() : await r.json();
+  try { bodyText = await r.text(); } catch(e) {}
+ }
+ const shortTxt = (bodyText || '').toString().replace(/\s+/g, ' ').trim().slice(0, 220);
+ const msg = r.status === 413 ? 'API 413 Payload too large' : `API ${r.status}`;
+ throw new Error(msg + (shortTxt ? ' - ' + shortTxt : ''));
+}
+// ===== MAIN SEARCH =====
+async function searchFamily() {
+ const input = document.getElementById('pubNumber').value.trim();
+ if (!input) { showBanner('Please enter a publication or application number.', 'warning'); return; }
+ const pubNumber = normaliseNumber(input);
+ document.getElementById('pubNumber').value = pubNumber;
+ showLoading(true); hideBanner(); hideResults();
+ updateExternalLinks(pubNumber); setStep(1, 'active');
+ try {
+  const cc = pubNumber.substring(0, 2);
+  const num = pubNumber.substring(2).replace(/[A-Z]\d?$/, '');
+  familyData = [];
+  // Step 1: smaller family retrieval path first to reduce API 413 risk
+  try {
+   const familyXml = await apiCall('https://ops.epo.org/3.2/rest-services/family/publication/docdb/' + cc + '.' + num, true);
+   familyData = parseFamilyXmlLite(familyXml || '');
+  } catch (e) {
+   if (String(e.message || '').includes('413') || !familyData.length) {
+    const biblioData = await apiCall('https://ops.epo.org/3.2/rest-services/family/publication/docdb/' + cc + '.' + num + '/biblio');
+    if (!biblioData) throw new Error('Patent not found.');
+    familyData = parseBiblioResponse(biblioData);
+   } else {
+    throw e;
+   }
+  }
+  if (!familyData || !familyData.length) throw new Error('Patent not found or no eligible publication numbers were returned.');
+  setStep(1, 'done'); setStep(2, 'active');
+  try {
+   const legalXml = await apiCall('https://ops.epo.org/3.2/rest-services/family/publication/docdb/' + cc + '.' + num + '/legal', true);
+   if (legalXml) { legalEvents = parseLegalXml(legalXml); mergeLegalIntoFamily(); }
+  } catch(e) {
+   try {
+    const legalJson = await apiCall('https://ops.epo.org/3.2/rest-services/family/publication/docdb/' + cc + '.' + num + '/legal');
+    if (legalJson) { legalEvents = parseLegalJson(legalJson); mergeLegalIntoFamily(); }
+   } catch(e2) { console.warn('Legal unavailable:', e2.message); }
+  }
+  setStep(2, 'done'); setStep(3, 'active');
+  renderResults(pubNumber);
+  const lc = familyData.filter(function(d) { return d.lastAction; }).length;
+  showBanner('✓ Found ' + familyData.length + ' publication numbers across ' + [...new Set(familyData.map(function(d){return d.office;}))].length + ' offices. ' + lc + ' with legal events.', 'success');
+  setStep(3, 'done');
+ } catch(e) { showBanner(e.message, 'error'); } finally { showLoading(false); }
+}
+
+// ===== BIBLIO PARSING =====
+function parseFamilyXmlLite(xmlString) {
+ const results = [];
+ const seen = new Set();
+ try {
+  const doc = new DOMParser().parseFromString(xmlString, 'application/xml');
+  if (doc.querySelector('parsererror')) return results;
+  const docIds = doc.querySelectorAll('publication-reference document-id[document-id-type="docdb"], document-id[document-id-type="docdb"]');
+  docIds.forEach(function(node) {
+   const country = ((node.querySelector('country') || {}).textContent || '').trim();
+   const docNum = ((node.querySelector('doc-number') || {}).textContent || '').trim();
+   const kind = ((node.querySelector('kind') || {}).textContent || '').trim();
+   const dateRaw = ((node.querySelector('date') || {}).textContent || '').trim();
+   const pub = (country + docNum + kind).trim();
+   if (!pub || seen.has(pub) || !shouldKeepPublicationByOffice(pub, country)) return;
+   seen.add(pub);
+   results.push({
+    office: country,
+    applicationNumber: '',
+    publicationNumber: pub,
+    publicationDate: formatDateStr(dateRaw),
+    rawDate: dateRaw,
+    kind: kind,
+    status: guessStatus(kind),
+    lastUpdate: formatDateStr(new Date().toISOString().replace(/-/g,'').substring(0,8)),
+    lastActionDate: '',
+    lastAction: '',
+    lastActionCode: '',
+    legalEvents: [],
+    globalDossierUrl: null
+   });
+  });
+ } catch(e) { console.warn('Family XML lite parse failed:', e.message); }
+ return results;
+}
+
+function parseBiblioResponse(data) {
+ const results = [];
+ const seen = new Set();
+ try {
+  let members = data['ops:world-patent-data']['ops:patent-family']['ops:family-member'];
+  if (!Array.isArray(members)) members = [members];
+  members.forEach(function(member) {
+   let pubRef = member['publication-reference']['document-id'];
+   if (!Array.isArray(pubRef)) pubRef = [pubRef];
+   const docdb = pubRef.find(function(d) { return d['@document-id-type'] === 'docdb'; }) || pubRef[0];
+   const country = docdb['country']?.['$'] || '';
+   const docNum = docdb['doc-number']?.['$'] || '';
+   const kind = docdb['kind']?.['$'] || '';
+   const dateRaw = docdb['date']?.['$'] || '';
+   const publicationNumber = (country + docNum + kind).trim();
+   if (!publicationNumber || seen.has(publicationNumber) || !shouldKeepPublicationByOffice(publicationNumber, country)) return;
+   seen.add(publicationNumber);
+   results.push({
+    office: country,
+    applicationNumber: '',
+    publicationNumber: publicationNumber,
+    publicationDate: formatDateStr(dateRaw),
+    rawDate: dateRaw,
+    kind: kind,
+    status: guessStatus(kind),
+    lastUpdate: formatDateStr(new Date().toISOString().replace(/-/g,'').substring(0,8)),
+    lastActionDate: '',
+    lastAction: '',
+    lastActionCode: '',
+    legalEvents: [],
+    globalDossierUrl: null
+   });
+  });
+ } catch(e) { console.error('Biblio parse:', e); }
+ return results;
+}
+
+// ===== LEGAL PARSING (XML) =====
+function parseLegalXml(xmlString) {
+    const events = {};
+    try {
+        const doc = new DOMParser().parseFromString(xmlString, 'application/xml');
+        if (doc.querySelector('parsererror')) return events;
+
+        const members = doc.querySelectorAll('[family-id]') || doc.getElementsByTagName('ops:family-member');
+        let memberEls = members.length > 0 ? members : doc.getElementsByTagName('family-member');
+        // Try alternate selector
+        if (memberEls.length === 0) {
+            const allEls = doc.querySelectorAll('*');
+            const tempMembers = [];
+            allEls.forEach(el => {
+                if (el.localName === 'family-member' || el.tagName?.includes('family-member')) tempMembers.push(el);
+            });
+            memberEls = tempMembers;
+        }
+
+        for (let i = 0; i < memberEls.length; i++) {
+            const member = memberEls[i];
+            const pubRefEl = member.querySelector('publication-reference document-id') ||
+                            member.querySelector('[document-id-type="docdb"]');
+            if (!pubRefEl) continue;
+
+            const country = (pubRefEl.querySelector('country') || {}).textContent || '';
+            const docNum = (pubRefEl.querySelector('doc-number') || {}).textContent || '';
+            const kind = (pubRefEl.querySelector('kind') || {}).textContent || '';
+            const key = country + docNum + kind;
+
+            // Find legal nodes
+            const allChildren = member.querySelectorAll('*');
+            const memberEvents = [];
+
+            allChildren.forEach(el => {
+                if (el.localName === 'legal' || el.tagName?.includes(':legal')) {
+                    const code = el.getAttribute('code') || '';
+                    const date = el.getAttribute('date') || '';
+                    let desc = '';
+                    // Get text from children
+                    const children = el.children;
+                    for (let k = 0; k < children.length; k++) {
+                        const t = children[k].textContent?.trim();
+                        if (t) { desc += (desc ? ' ' : '') + t; }
+                    }
+                    if (!desc) desc = el.textContent?.trim()?.substring(0, 300) || '';
+                    if (date || code) {
+                        memberEvents.push({
+                            date: formatDateStr(date.replace(/-/g, '')),
+                            rawDate: date.replace(/-/g, ''),
+                            code, description: desc
+                        });
+                    }
+                }
+            });
+
+            memberEvents.sort((a, b) => (b.rawDate || '').localeCompare(a.rawDate || ''));
+            if (memberEvents.length > 0) events[key] = memberEvents;
+        }
+    } catch(e) { console.error('Legal XML:', e); }
+    return events;
+}
+
+// ===== LEGAL PARSING (JSON) =====
+function parseLegalJson(data) {
+    const events = {};
+    try {
+        let members = data['ops:world-patent-data']?.['ops:patent-family']?.['ops:family-member'];
+        if (!members) return events;
+        if (!Array.isArray(members)) members = [members];
+
+        members.forEach(member => {
+            let pubRef = member['publication-reference']?.['document-id'];
+            if (!pubRef) return;
+            if (!Array.isArray(pubRef)) pubRef = [pubRef];
+            const docdb = pubRef.find(d => d['@document-id-type'] === 'docdb') || pubRef[0];
+            const key = (docdb?.['country']?.['$']||'') + (docdb?.['doc-number']?.['$']||'') + (docdb?.['kind']?.['$']||'');
+
+            let legalNodes = member['ops:legal'] || member['legal'];
+            if (!legalNodes) return;
+            if (!Array.isArray(legalNodes)) legalNodes = [legalNodes];
+
+            const arr = [];
+            legalNodes.forEach(node => {
+                if (typeof node !== 'object') return;
+                const code = node['@code'] || '';
+                const date = node['@date'] || '';
+                let desc = '';
+                Object.keys(node).forEach(k => {
+                    if (k.startsWith('ops:L') || k.startsWith('L')) {
+                        const v = node[k]; desc += (desc ? ' ' : '') + (typeof v === 'string' ? v : v?.['$'] || '');
+                    }
+                });
+                if (!desc) desc = node['@desc'] || node['$'] || '';
+                if (date || code) arr.push({ date: formatDateStr(date.replace(/-/g,'')), rawDate: date.replace(/-/g,''), code, description: desc });
+            });
+
+            arr.sort((a,b) => (b.rawDate||'').localeCompare(a.rawDate||''));
+            if (arr.length > 0) events[key] = arr;
+        });
+    } catch(e) { console.error('Legal JSON:', e); }
+    return events;
+}
+
+function mergeLegalIntoFamily() {
+    familyData.forEach(item => {
+        const evts = legalEvents[item.publicationNumber];
+        if (evts && evts.length > 0) {
+            item.legalEvents = evts;
+            const latest = evts[0];
+            item.lastActionDate = latest.date;
+            item.lastActionCode = latest.code;
+            item.lastAction = cleanLegalDescription(latest.description, latest.code);
+        }
+    });
+}
+
+// ===== RENDER =====
+function renderResults(pubNumber) {
+    document.getElementById('resultsInfo').style.display = 'block';
+    document.getElementById('tableWrapper').style.display = 'block';
+    const offices = [...new Set(familyData.map(d => d.office))];
+    const legalCount = familyData.filter(d => d.lastAction).length;
+    document.getElementById('resultsTitle').textContent = `${pubNumber} Family Member Listing from All IP Offices`;
+    document.getElementById('resultsSummary').innerHTML =
+        `Found <span class="count">${offices.length}</span> Family Members, <span class="count">${familyData.length}</span> Publications <span class="mat-inline">MAT</span>` +
+        (legalCount ? ` — <span class="count">${legalCount}</span> with legal events` : '');
+    renderTable(familyData);
+}
+
+function renderTable(data) {
+    const tbody = document.getElementById('resultsBody');
+    tbody.innerHTML = '';
+
+    // Group by office
+    const grouped = {};
+    data.forEach(item => { if (!grouped[item.office]) grouped[item.office] = []; grouped[item.office].push(item); });
+
+    const officeOrder = ['WO','AU','US','EP','CN','JP','KR','CA','IN','TW','GB','DE','FR','BR'];
+    const sortedOffices = Object.keys(grouped).sort((a,b) => {
+        const ai = officeOrder.indexOf(a); const bi = officeOrder.indexOf(b);
+        return (ai===-1?99:ai) - (bi===-1?99:bi);
+    });
+
+    sortedOffices.forEach(office => {
+        const items = grouped[office];
+        items.forEach((item, idx) => {
+            const tr = document.createElement('tr');
+            if (idx === 0) tr.classList.add('office-first');
+
+            const isFirstInGroup = idx === 0;
+            const hasMat = item.status === 'Granted';
+            const ferUrl = buildFERLink(item);
+            const wrapperUrl = buildFileWrapperUrl(item);
+            const wrapperLabel = getWrapperLabel(office);
+            const wrapperClass = getWrapperClass(office);
+            const espacenetUrl = getEspacenetUrl(item.publicationNumber);
+
+            // Office cell: only show for first in group
+            let officeHtml = '';
+            if (isFirstInGroup) {
+                officeHtml = `<div class="office-cell">
+                    <a href="${ferUrl}" target="_blank" style="text-decoration:none; display:flex; align-items:center;">
+                        ${getFlagHtml(office)}
+                    </a>
+                    <span class="office-code">${office}</span>
+                </div>`;
+            }
+
+            // Application number: only show for first in group
+            let appNumHtml = isFirstInGroup ? item.applicationNumber : '';
+
+            // Last update
+            let lastUpdateHtml = item.lastUpdate ? `${item.lastUpdate} <span class="check-green">✓</span>` : '';
+
+            // Last action - CLEAN display
+            let lastActionHtml = '';
+            if (item.lastAction) {
+                const codeHtml = item.lastActionCode ? `<span class="last-action-code">${item.lastActionCode}</span>` : '';
+                lastActionHtml = `<div class="last-action-cell">${codeHtml}<span class="last-action-desc">${item.lastAction}</span></div>`;
+            }
+
+            tr.innerHTML = `
+                <td>${officeHtml}</td>
+                <td class="app-num">${appNumHtml}</td>
+                <td class="pub-num">${item.publicationNumber}</td>
+                <td class="date-cell">${item.publicationDate}</td>
+                <td>
+                    <div class="fer-docs">
+                        <a href="${ferUrl}" target="_blank" class="fer-icon folder" title="FER Documents">📂</a>
+                        <a href="${espacenetUrl}" target="_blank" class="fer-icon download" title="Espacenet">📄</a>
+                        <span class="fer-icon share" title="All links & events" onclick="openDocuments('${item.publicationNumber}','${item.applicationNumber}','${office}')">🔗</span>
+                        ${hasMat ? '<span class="mat-badge">MAT</span>' : ''}
+                    </div>
+                </td>
+                <td><div class="last-update">${lastUpdateHtml}</div></td>
+                <td class="date-cell">${item.lastActionDate}</td>
+                <td><a href="${wrapperUrl}" target="_blank" class="wrapper-btn ${wrapperClass}">📁 ${wrapperLabel}</a></td>
+                <td>${lastActionHtml}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    });
+}
+
+// ===== DOCUMENT MODAL =====
+function openDocuments(pubNumber, appNumber, office) {
+    document.getElementById('docModal').classList.add('active');
+    document.getElementById('docModalTitle').textContent = `${pubNumber} — Legal Events & Access`;
+    const item = { office, applicationNumber: appNumber, publicationNumber: pubNumber, kind: pubNumber.match(/([A-Z]\d?)$/)?.[1] || 'A' };
+    const ferUrl = buildFERLink(item);
+    const gdUrl = buildGlobalDossierUrl(item);
+
+    let html = '<h4 style="font-size:12px; color:#555; margin-bottom:10px;">🔗 File Access:</h4><ul class="doc-list">';
+    html += `<li><span class="doc-icon">📂</span><span class="doc-name"><strong>${getWrapperLabel(office)}</strong></span><a href="${ferUrl}" target="_blank" class="doc-download">Open</a></li>`;
+    html += `<li><span class="doc-icon">🌐</span><span class="doc-name">Global Dossier</span><a href="${gdUrl}" target="_blank" class="doc-download">Open</a></li>`;
+    html += `<li><span class="doc-icon">🔵</span><span class="doc-name">Espacenet</span><a href="${getEspacenetUrl(pubNumber)}" target="_blank" class="doc-download">Open</a></li>`;
+    html += '</ul>';
+
+    const evts = legalEvents[pubNumber] || [];
+    if (evts.length > 0) {
+        html += `<h4 style="font-size:12px; color:#555; margin:16px 0 8px;">⚖️ All Legal Events (${evts.length}):</h4><ul class="doc-list">`;
+        evts.forEach(evt => {
+            const cleanDesc = cleanLegalDescription(evt.description, evt.code);
+            html += `<li><span class="doc-icon">📋</span><span class="doc-name"><span class="last-action-code">${evt.code}</span>${cleanDesc}</span><span class="doc-date">${evt.date}</span></li>`;
+        });
+        html += '</ul>';
+    } else {
+        html += '<p style="color:#888; font-size:12px; margin-top:16px;">No legal events from EPO OPS /legal.</p>';
+    }
+    document.getElementById('docModalBody').innerHTML = html;
+}
+function closeDocModal() { document.getElementById('docModal').classList.remove('active'); }
+
+// ===== FILTER =====
+function filterTable() {
+    const text = document.getElementById('filterInput').value.toLowerCase();
+    const filtered = familyData.filter(item => {
+        const mt = !text || item.office.toLowerCase().includes(text) ||
+            item.publicationNumber.toLowerCase().includes(text) ||
+            item.applicationNumber.toLowerCase().includes(text) ||
+            (item.lastAction && item.lastAction.toLowerCase().includes(text));
+        return mt && (!currentOfficeFilter || item.office === currentOfficeFilter);
+    });
+    renderTable(filtered);
+}
+function cycleOfficeFilter() {
+    officeFilterIdx = (officeFilterIdx + 1) % officeOptions.length;
+    const sel = officeOptions[officeFilterIdx];
+    currentOfficeFilter = sel === 'All' ? '' : sel;
+    document.getElementById('officeFilterLabel').textContent = `IP Offices: ${sel}`;
+    filterTable();
+}
+
+// ===== EXPORT =====
+function toggleExport() { document.getElementById('exportDropdown').classList.toggle('active'); }
+function exportCSV() {
+    if (!familyData.length) return;
+    const h = ['Office','Application Number','Publication Number','Publication Date','Status','Last Action Date','Last Action Code','Last Action','FER Link'];
+    const rows = familyData.map(i => [i.office, i.applicationNumber, i.publicationNumber, i.publicationDate, i.status, i.lastActionDate, i.lastActionCode, `"${(i.lastAction||'').replace(/"/g,'""')}"`, buildFERLink(i)]);
+    download([h.join(','), ...rows.map(r=>r.join(','))].join('\n'), 'patent_family.csv', 'text/csv');
+}
+function exportJSON() {
+    if (!familyData.length) return;
+    const e = familyData.map(i => ({...i, urls:{fer:buildFERLink(i), globalDossier:buildGlobalDossierUrl(i), espacenet:getEspacenetUrl(i.publicationNumber)}}));
+    download(JSON.stringify(e, null, 2), 'patent_family.json', 'application/json');
+}
+function exportHTML() {
+    if (!familyData.length) return;
+    let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Patent Family</title><style>body{font-family:sans-serif;padding:20px;font-size:12px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:6px 8px;text-align:left}th{background:#f0f0f0}a{color:#00897b}
+.tab-bar {
+  display: flex;
+  gap: 8px;
+  padding: 12px 24px 0;
+  background: #f4f6f9;
+  border-bottom: 1px solid #e0e4e8;
+  flex-wrap: wrap;
+}
+.tab-btn {
+  appearance: none;
+  border: 1px solid #d0d5dc;
+  background: white;
+  color: #555;
+  padding: 9px 14px;
+  border-radius: 6px 6px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.tab-btn.active {
+  background: #00897b;
+  color: white;
+  border-color: #00897b;
+}
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+.bulk-shell { padding: 16px 24px 24px; }
+.bulk-panel {
+  background: white;
+  border: 1px solid #e0e4e8;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.bulk-panel-header {
+  padding: 16px 18px 10px;
+  border-bottom: 1px solid #eef0f3;
+}
+.bulk-panel-title { font-size: 15px; font-weight: 700; color: #333; margin-bottom: 4px; }
+.bulk-panel-subtitle { font-size: 12px; color: #666; }
+.bulk-controls {
+  padding: 16px 18px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.bulk-file-input {
+  border: 1px solid #d0d5dc;
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 12px;
+  min-width: 290px;
+  background: #fff;
+}
+.bulk-btn {
+  border: none;
+  border-radius: 6px;
+  padding: 9px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.bulk-btn.primary { background: #00897b; color: white; }
+.bulk-btn.primary:hover { background: #00796b; }
+.bulk-btn.secondary { background: #f4f6f9; color: #333; border: 1px solid #d0d5dc; }
+.bulk-btn.secondary:hover { background: #eef2f5; }
+.bulk-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.bulk-note {
+  margin: 0 18px 14px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: #fafbfc;
+  border: 1px solid #eef0f3;
+  color: #666;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+.bulk-divider {
+  padding: 0 18px 14px;
+  color: #888;
+  font-size: 11.5px;
+}
+.bulk-inline-row { padding: 0 18px 14px; }
+.bulk-inline-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #555;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.bulk-textarea {
+  width: 100%;
+  min-height: 140px;
+  resize: vertical;
+  border: 1px solid #d0d5dc;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 12px;
+  background: #fff;
+  line-height: 1.4;
+}
+.bulk-textarea::placeholder { color: #aaa; }
+.bulk-status {
+  margin: 0 18px 12px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: #f8fffe;
+  border: 1px solid #d7f0ec;
+  color: #00695c;
+  font-size: 12px;
+}
+.bulk-status.error { background: #ffebee; border-color: #ffcdd2; color: #b71c1c; }
+.bulk-status.warning { background: #fff8e1; border-color: #ffe082; color: #8d6e00; }
+.bulk-progress-wrap { padding: 0 18px 12px; }
+.bulk-progress-track { width: 100%; height: 10px; background: #eef2f5; border-radius: 999px; overflow: hidden; }
+.bulk-progress-bar { width: 0%; height: 100%; background: linear-gradient(90deg, #00897b, #26a69a); transition: width 0.2s ease; }
+.bulk-progress-meta { display: flex; justify-content: space-between; gap: 12px; margin-top: 8px; color: #666; font-size: 11.5px; }
+.bulk-summary { padding: 0 18px 14px; font-size: 12px; color: #444; }
+.bulk-preview-wrap { padding: 0 18px 18px; overflow-x: auto; }
+.bulk-preview-table { width: 100%; min-width: 760px; border-collapse: collapse; border: 1px solid #eef0f3; }
+.bulk-preview-table th, .bulk-preview-table td { border-bottom: 1px solid #eef0f3; padding: 8px 10px; text-align: left; font-size: 12px; vertical-align: top; }
+.bulk-preview-table th { background: #fafbfc; color: #555; font-size: 11px; font-weight: 700; }
+.bulk-preview-table tbody tr:hover { background: #f8fffe; }
+.bulk-chip { display: inline-block; margin: 2px 6px 2px 0; padding: 2px 6px; border-radius: 999px; background: #eef7f6; color: #00695c; font-size: 10.5px; font-weight: 600; white-space: nowrap; }
+.bulk-mono { font-family: 'SF Mono', 'Consolas', monospace; font-size: 11px; }
+.bulk-empty { color: #999; font-style: italic; }
+.bulk-accent-wo { color: #0d47a1; }
+@media (max-width: 768px) {
+  .tab-bar { padding-left: 16px; padding-right: 16px; }
+  .bulk-shell { padding-left: 16px; padding-right: 16px; }
+  .bulk-controls { flex-direction: column; align-items: stretch; }
+  .bulk-file-input { min-width: 0; width: 100%; }
+}
+
+</style></head><body><h2>${document.getElementById('resultsTitle').textContent}</h2><table><tr><th>Office</th><th>App</th><th>Pub</th><th>Date</th><th>Status</th><th>Action Date</th><th>FER</th><th>Action</th></tr>`;
+    familyData.forEach(i => { html += `<tr><td>${i.office}</td><td>${i.applicationNumber}</td><td>${i.publicationNumber}</td><td>${i.publicationDate}</td><td>${i.status}</td><td>${i.lastActionDate}</td><td><a href="${buildFERLink(i)}">${getWrapperLabel(i.office)}</a></td><td>${i.lastAction||''}</td></tr>`; });
+    html += '</table></body></html>';
+    download(html, 'patent_family.html', 'text/html');
+}
+function download(c, f, m) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([c],{type:m})); a.download = f; a.click(); }
+
+// ===== HELPERS =====
+function showLoading(s) { document.getElementById('loading').classList.toggle('active', s); }
+function setStep(n, st) { const el = document.getElementById('step'+n); if(!el)return; el.className='loading-step '+st; el.textContent=(st==='done'?'✅':'⏳')+' '+el.textContent.replace(/^[✅⏳]\s*/,''); }
+function showBanner(m, t) { const b=document.getElementById('infoBanner'); b.className='info-banner active '+(t||''); b.innerHTML=m; }
+function hideBanner() { document.getElementById('infoBanner').className='info-banner'; }
+function hideResults() { document.getElementById('resultsInfo').style.display='none'; document.getElementById('tableWrapper').style.display='none'; }
+function updateExternalLinks(p) {
+    const cc=p.substring(0,2), n=p.substring(2);
+    document.getElementById('linkGlobalDossier').href=`https://globaldossier.uspto.gov/#!/result/application/${cc}/${n}/1`;
+    document.getElementById('linkEspacenet').href=`https://worldwide.espacenet.com/patent/search?q=pn%3D${p}`;
+    document.getElementById('linkEPRegister').href=`https://register.epo.org/ipfwretrieve?apn=${cc}.${n}.A&lng=en`;
+    document.getElementById('linkAusPat').href=`https://pericles.ipaustralia.gov.au/ols/auspat/applicationDetails.do?applicationNo=${n}`;
+    document.getElementById('linkUSPTO').href=`https://patentcenter.uspto.gov/`;
+    document.getElementById('linkWIPO').href=`https://patentscope.wipo.int/search/en/search.jsf?query=AN:(${p})`;
+    document.getElementById('linkLens').href=`https://www.lens.org/lens/search/patent/list?q=publication_number:${p}`;
+    document.getElementById('linkGooglePatents').href=`https://patents.google.com/patent/${p}`;
+    document.getElementById('externalLinks').classList.add('active');
+}
+
+
+// ===== TABS =====
+function switchTab(tabName) {
+ activeTab = tabName;
+ document.getElementById('tabBtnSingle').classList.toggle('active', tabName === 'single');
+ document.getElementById('tabBtnBulk').classList.toggle('active', tabName === 'bulk');
+ document.getElementById('tabBtnWO').classList.toggle('active', tabName === 'wo');
+ document.getElementById('tabBtnWUEP').classList.toggle('active', tabName === 'wuep');
+ document.getElementById('singleTabPanel').classList.toggle('active', tabName === 'single');
+ document.getElementById('bulkTabPanel').classList.toggle('active', tabName === 'bulk');
+ document.getElementById('woTabPanel').classList.toggle('active', tabName === 'wo');
+ document.getElementById('wuepTabPanel').classList.toggle('active', tabName === 'wuep');
+ document.querySelectorAll('.single-only').forEach(function(el) {
+  el.style.display = tabName === 'single' ? '' : 'none';
+ });
+}
+
+// ===== SHARED BULK HELPERS =====
+function normaliseApplicationNumber(input) {
+ let value = String(input || '').trim().toUpperCase();
+ if (!value) return '';
+ value = value.replace(/\s+/g, '');
+ if (/^\d+$/.test(value)) value = 'AU' + value;
+ return value;
+}
+function buildApplicationQueryCandidates(appNumber) {
+ const raw = normaliseApplicationNumber(appNumber);
+ if (!raw) return [];
+ const candidates = [];
+ const pushCandidate = (format, number) => {
+  if (!number) return;
+  const key = `${format}::${number}`;
+  if (!candidates.some(c => c.key === key)) candidates.push({ key, format, number });
+ };
+ if (/^[A-Z]{2}[A-Z0-9]+$/.test(raw)) {
+  const cc = raw.substring(0, 2);
+  const body = raw.substring(2).replace(/[^A-Z0-9]/g, '');
+  pushCandidate('docdb', `${cc}.${body}`);
+  pushCandidate('epodoc', `${cc}${body}`);
+ }
+ const compact = raw.replace(/[^A-Z0-9]/g, '');
+ if (compact !== raw && /^[A-Z]{2}[A-Z0-9]+$/.test(compact)) {
+  const cc = compact.substring(0, 2);
+  const body = compact.substring(2);
+  pushCandidate('docdb', `${cc}.${body}`);
+  pushCandidate('epodoc', `${cc}${body}`);
+ }
+ return candidates;
+}
+function readManualRows(textareaId) {
+ const raw = (document.getElementById(textareaId) || {}).value || '';
+ const lines = raw.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+ const out = [];
+ const seen = new Set();
+ lines.forEach(line => {
+  const value = normaliseApplicationNumber(line);
+  if (!value) return;
+  if (value.length > 40) return;
+  if (!seen.has(value)) { seen.add(value); out.push(value); }
+ });
+ return out;
+}
+async function readInputRowsFromFile(file) {
+ const buffer = await file.arrayBuffer();
+ const workbook = XLSX.read(buffer, { type: 'array' });
+ const firstSheetName = workbook.SheetNames[0];
+ const worksheet = workbook.Sheets[firstSheetName];
+ const rowsAoA = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+ const headers = (rowsAoA[0] || []).map(v => String(v || '').trim());
+ const targetIdx = headers.findIndex(h => h.toLowerCase() === 'pams_application_number');
+ const colIdx = targetIdx >= 0 ? targetIdx : 0;
+ const extracted = [];
+ for (let r = 1; r < rowsAoA.length; r++) {
+  const value = normaliseApplicationNumber(rowsAoA[r][colIdx]);
+  if (value && value.length <= 40) extracted.push(value);
+ }
+ return { firstSheetName, usedFallbackHeader: targetIdx === -1, rows: extracted };
+}
+function extractFamilyPublicationNumbersFromXml(xmlString) {
+ const pubs = [];
+ const seen = new Set();
+ try {
+  const doc = new DOMParser().parseFromString(xmlString, 'application/xml');
+  if (doc.querySelector('parsererror')) return pubs;
+  const docIds = doc.querySelectorAll('publication-reference document-id[document-id-type="docdb"], document-id[document-id-type="docdb"]');
+  docIds.forEach(function(node) {
+   const country = ((node.querySelector('country') || {}).textContent || '').trim();
+   const docNum = ((node.querySelector('doc-number') || {}).textContent || '').trim();
+   const kind = ((node.querySelector('kind') || {}).textContent || '').trim();
+   const pub = (country + docNum + kind).trim();
+   if (pub && !seen.has(pub) && shouldKeepPublicationByOffice(pub, country)) {
+    seen.add(pub);
+    pubs.push(pub);
+   }
+  });
+ } catch (e) {
+  console.warn('XML family parse failed:', e.message);
+ }
+ return pubs;
+}
+function extractWOPublicationNumbersFromXml(xmlString) {
+ const all = extractFamilyPublicationNumbersFromXml(xmlString);
+ return all.filter(pub => pub.startsWith('WO'));
+}
+function extractFamilyPublicationNumbersFromBiblio(biblioData) {
+ const parsed = parseBiblioResponse(biblioData) || [];
+ const seen = new Set();
+ const pubs = [];
+ parsed.forEach(item => {
+  const pub = (item.publicationNumber || '').trim();
+  if (pub && !seen.has(pub)) { seen.add(pub); pubs.push(pub); }
+ });
+ return pubs;
+}
+
+// ===== GENERAL BULK TAB =====
+function setBulkStatus(message, type) {
+ const el = document.getElementById('bulkStatus');
+ el.textContent = message;
+ el.className = 'bulk-status' + (type ? ' ' + type : '');
+}
+function setBulkProgress(done, total) {
+ const pct = total ? Math.round((done / total) * 100) : 0;
+ document.getElementById('bulkProgressBar').style.width = pct + '%';
+ document.getElementById('bulkProgressText').textContent = `${done} of ${total || 0} processed`;
+ document.getElementById('bulkProgressPct').textContent = `${pct}%`;
+}
+function updateBulkButtons(running) {
+ bulkIsProcessing = !!running;
+ document.getElementById('bulkRunBtn').disabled = bulkIsProcessing;
+ document.getElementById('bulkExcelInput').disabled = bulkIsProcessing;
+ document.getElementById('bulkManualInput').disabled = bulkIsProcessing;
+ document.getElementById('bulkDownloadBtn').disabled = bulkIsProcessing || !bulkOutputRows.length;
+}
+function renderBulkPreview() {
+ const tbody = document.getElementById('bulkPreviewBody');
+ if (!bulkOutputRows.length) {
+  tbody.innerHTML = '<tr><td colspan="4" class="bulk-empty">No bulk results yet.</td></tr>';
+  return;
+ }
+ tbody.innerHTML = bulkOutputRows.slice(0, 25).map((row, idx) => {
+  const pubs = row.publications.length ? row.publications.map(pub => `<span class="bulk-chip bulk-mono">${pub}</span>`).join('') : '<span class="bulk-empty">No family publications returned</span>';
+  const statusClass = row.status === 'OK' ? '' : ' class="bulk-mono"';
+  return `<tr><td>${idx + 1}</td><td class="bulk-mono">${row.application}</td><td>${pubs}</td><td${statusClass}>${row.status}</td></tr>`;
+ }).join('');
+}
+function summariseBulkResults() {
+ const total = bulkOutputRows.length;
+ const okCount = bulkOutputRows.filter(r => r.status === 'OK').length;
+ const pubCount = bulkOutputRows.reduce((sum, r) => sum + r.publications.length, 0);
+ document.getElementById('bulkSummary').innerHTML = `Processed <strong>${total}</strong> application numbers, <strong>${okCount}</strong> returned OK, and <strong>${pubCount}</strong> family publication numbers were written across adjacent columns.`;
+}
+function buildBulkExportRows() {
+ const maxPublications = bulkOutputRows.reduce((max, row) => Math.max(max, row.publications.length), 0);
+ return bulkOutputRows.map(row => {
+  const out = { pams_application_number: row.application };
+  for (let i = 0; i < maxPublications; i++) out[`family_publication_${i + 1}`] = row.publications[i] || '';
+  return out;
+ });
+}
+function downloadBulkResults() {
+ if (!bulkOutputRows.length) { setBulkStatus('There are no bulk results to download yet.', 'warning'); return; }
+ const wb = XLSX.utils.book_new();
+ XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(buildBulkExportRows()), 'Family Publications');
+ XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(bulkOutputRows.map(r => ({ pams_application_number: r.application, status: r.status, family_publication_count: r.publications.length, matched_endpoint: r.matchedEndpoint || '' }))), 'Processing Log');
+ const stamp = new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-');
+ const base = (bulkSourceFileName || 'family-bulk-input').replace(/\.[^.]+$/, '');
+ XLSX.writeFile(wb, `${base}-family-publications-${stamp}.xlsx`);
+}
+async function fetchFamilyPublicationsByApplication(appNumber) {
+ const candidates = buildApplicationQueryCandidates(appNumber);
+ if (!candidates.length) return { application: appNumber, publications: [], status: 'Invalid application number format', matchedEndpoint: '' };
+ const guard = normaliseApplicationNumber(appNumber);
+ if (guard.length > 40) return { application: appNumber, publications: [], status: 'Skipped, input too long', matchedEndpoint: '' };
+ let lastError = null;
+ for (const candidate of candidates) {
+  try {
+   const url = `https://ops.epo.org/3.2/rest-services/family/application/${candidate.format}/${candidate.number}/biblio`;
+   const data = await apiCall(url);
+   const pubs = extractFamilyPublicationNumbersFromBiblio(data);
+   if (pubs.length) return { application: appNumber, publications: pubs, status: 'OK', matchedEndpoint: `biblio ${candidate.format}/${candidate.number}` };
+  } catch (e) {
+   lastError = e;
+   if (String(e.message || '').includes('413')) {
+    try {
+     const url2 = `https://ops.epo.org/3.2/rest-services/family/application/${candidate.format}/${candidate.number}`;
+     const xml = await apiCall(url2, true);
+     const pubs2 = extractFamilyPublicationNumbersFromXml(xml || '');
+     if (pubs2.length) return { application: appNumber, publications: pubs2, status: 'OK', matchedEndpoint: `family ${candidate.format}/${candidate.number}` };
+    } catch (e2) {
+     lastError = e2;
+    }
+   }
+  }
+ }
+ return { application: appNumber, publications: [], status: lastError ? lastError.message : 'No family publications found', matchedEndpoint: '' };
+}
+async function processBulkFamily() {
+ if (bulkIsProcessing) return;
+ if (typeof XLSX === 'undefined') { setBulkStatus('The Excel library did not load. Please check your network connection and reload.', 'error'); return; }
+ const file = (document.getElementById('bulkExcelInput').files || [])[0];
+ const manualRows = readManualRows('bulkManualInput');
+ if (!file && !manualRows.length) { setBulkStatus('Choose an Excel workbook or paste at least one application number in the manual list.', 'warning'); return; }
+ bulkOutputRows = [];
+ document.getElementById('bulkPreviewBody').innerHTML = '<tr><td colspan="4" class="bulk-empty">No bulk results yet.</td></tr>';
+ document.getElementById('bulkSummary').textContent = '';
+ setBulkProgress(0, 0);
+ updateBulkButtons(true);
+ switchTab('bulk');
+ try {
+  if (file) {
+   bulkSourceFileName = file.name;
+   const parsed = await readInputRowsFromFile(file);
+   bulkRows = parsed.rows;
+   if (!bulkRows.length) { setBulkStatus('No non-empty application numbers were found in the selected workbook.', 'warning'); updateBulkButtons(false); return; }
+   setBulkStatus(parsed.usedFallbackHeader ? `Column A header was not exactly pams_application_number, so the first column from sheet ${parsed.firstSheetName} was used.` : `Loaded ${bulkRows.length} application numbers from sheet ${parsed.firstSheetName}.`, parsed.usedFallbackHeader ? 'warning' : '');
+  } else {
+   bulkSourceFileName = 'manual-entry';
+   bulkRows = manualRows;
+   setBulkStatus(`Loaded ${bulkRows.length} application numbers from manual entry.`, '');
+  }
+  const seen = new Set();
+  bulkRows = bulkRows.filter(v => { if (seen.has(v)) return false; seen.add(v); return true; });
+  setBulkProgress(0, bulkRows.length);
+  for (let i = 0; i < bulkRows.length; i++) {
+   const application = bulkRows[i];
+   setBulkStatus(`Processing ${i + 1} of ${bulkRows.length}: ${application}`, '');
+   bulkOutputRows.push(await fetchFamilyPublicationsByApplication(application));
+   setBulkProgress(i + 1, bulkRows.length);
+   renderBulkPreview();
+   await new Promise(res => setTimeout(res, 200));
+  }
+  summariseBulkResults();
+  const okCount = bulkOutputRows.filter(r => r.status === 'OK').length;
+  const failCount = bulkOutputRows.length - okCount;
+  setBulkStatus(`Bulk run complete. ${okCount} application numbers returned OK, ${failCount} need review.`, failCount ? 'warning' : '');
+ } catch (e) {
+  console.error(e);
+  setBulkStatus('Bulk processing failed: ' + e.message, 'error');
+ } finally {
+  updateBulkButtons(false);
+ }
+}
+
+// ===== WO-ONLY TAB =====
+function setWOStatus(message, type) {
+ const el = document.getElementById('woStatus');
+ el.textContent = message;
+ el.className = 'bulk-status' + (type ? ' ' + type : '');
+}
+function setWOProgress(done, total) {
+ const pct = total ? Math.round((done / total) * 100) : 0;
+ document.getElementById('woProgressBar').style.width = pct + '%';
+ document.getElementById('woProgressText').textContent = `${done} of ${total || 0} processed`;
+ document.getElementById('woProgressPct').textContent = `${pct}%`;
+}
+function updateWOButtons(running) {
+ woIsProcessing = !!running;
+ document.getElementById('woRunBtn').disabled = woIsProcessing;
+ document.getElementById('woExcelInput').disabled = woIsProcessing;
+ document.getElementById('woManualInput').disabled = woIsProcessing;
+ document.getElementById('woDownloadBtn').disabled = woIsProcessing || !woOutputRows.length;
+}
+function renderWOPreview() {
+ const tbody = document.getElementById('woPreviewBody');
+ if (!woOutputRows.length) {
+  tbody.innerHTML = '<tr><td colspan="4" class="bulk-empty">No WO results yet.</td></tr>';
+  return;
+ }
+ tbody.innerHTML = woOutputRows.slice(0, 25).map((row, idx) => {
+  const woDisplay = row.woPublicationNumber ? `<span class="bulk-chip bulk-mono bulk-accent-wo">${row.woPublicationNumber}</span>` : '<span class="bulk-empty">No WO number found</span>';
+  const statusClass = row.status === 'OK' ? '' : ' class="bulk-mono"';
+  return `<tr><td>${idx + 1}</td><td class="bulk-mono">${row.application}</td><td>${woDisplay}</td><td${statusClass}>${row.status}</td></tr>`;
+ }).join('');
+}
+function summariseWOResults() {
+ const total = woOutputRows.length;
+ const withWO = woOutputRows.filter(r => r.woPublicationNumber).length;
+ document.getElementById('woSummary').innerHTML = `Processed <strong>${total}</strong> application numbers and found WO publication numbers for <strong>${withWO}</strong> rows. Output Excel writes WO values into <strong>column B</strong>.`;
+}
+function buildWOExportRows() {
+ return woOutputRows.map(row => ({
+  pams_application_number: row.application,
+  wo_publication_number: row.woPublicationNumber || ''
+ }));
+}
+function downloadWOResults() {
+ if (!woOutputRows.length) { setWOStatus('There are no WO results to download yet.', 'warning'); return; }
+ const wb = XLSX.utils.book_new();
+ XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(buildWOExportRows()), 'WO Results');
+ XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(woOutputRows.map(r => ({ pams_application_number: r.application, wo_publication_number: r.woPublicationNumber || '', status: r.status, matched_endpoint: r.matchedEndpoint || '' }))), 'Processing Log');
+ const stamp = new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-');
+ const base = (woSourceFileName || 'wo-bulk-input').replace(/\.[^.]+$/, '');
+ XLSX.writeFile(wb, `${base}-WO-only-${stamp}.xlsx`);
+}
+async function fetchWOOnlyByApplication(appNumber) {
+ const candidates = buildApplicationQueryCandidates(appNumber);
+ if (!candidates.length) return { application: appNumber, woPublicationNumber: '', status: 'Invalid application number format', matchedEndpoint: '' };
+ const guard = normaliseApplicationNumber(appNumber);
+ if (guard.length > 40) return { application: appNumber, woPublicationNumber: '', status: 'Skipped, input too long', matchedEndpoint: '' };
+ let lastError = null;
+ for (const candidate of candidates) {
+  // Lighter path first to shorten load and payload
+  try {
+   const url = `https://ops.epo.org/3.2/rest-services/family/application/${candidate.format}/${candidate.number}`;
+   const xml = await apiCall(url, true);
+   const woPubs = extractWOPublicationNumbersFromXml(xml || '');
+   return { application: appNumber, woPublicationNumber: woPubs.join('; '), status: 'OK', matchedEndpoint: `family ${candidate.format}/${candidate.number}` };
+  } catch (e) {
+   lastError = e;
+   // Fallback to /biblio only if needed
+   try {
+    const url2 = `https://ops.epo.org/3.2/rest-services/family/application/${candidate.format}/${candidate.number}/biblio`;
+    const data = await apiCall(url2);
+    const woPubs2 = extractFamilyPublicationNumbersFromBiblio(data).filter(pub => pub.startsWith('WO'));
+    return { application: appNumber, woPublicationNumber: woPubs2.join('; '), status: 'OK', matchedEndpoint: `biblio ${candidate.format}/${candidate.number}` };
+   } catch (e2) {
+    lastError = e2;
+   }
+  }
+ }
+ return { application: appNumber, woPublicationNumber: '', status: lastError ? lastError.message : 'No WO publication found', matchedEndpoint: '' };
+}
+async function processWOBulk() {
+ if (woIsProcessing) return;
+ if (typeof XLSX === 'undefined') { setWOStatus('The Excel library did not load. Please check your network connection and reload.', 'error'); return; }
+ const file = (document.getElementById('woExcelInput').files || [])[0];
+ const manualRows = readManualRows('woManualInput');
+ if (!file && !manualRows.length) { setWOStatus('Choose an Excel workbook or paste at least one application number in the manual list.', 'warning'); return; }
+ woOutputRows = [];
+ document.getElementById('woPreviewBody').innerHTML = '<tr><td colspan="4" class="bulk-empty">No WO results yet.</td></tr>';
+ document.getElementById('woSummary').textContent = '';
+ setWOProgress(0, 0);
+ updateWOButtons(true);
+ switchTab('wo');
+ try {
+  if (file) {
+   woSourceFileName = file.name;
+   const parsed = await readInputRowsFromFile(file);
+   woRows = parsed.rows;
+   if (!woRows.length) { setWOStatus('No non-empty application numbers were found in the selected workbook.', 'warning'); updateWOButtons(false); return; }
+   setWOStatus(parsed.usedFallbackHeader ? `Column A header was not exactly pams_application_number, so the first column from sheet ${parsed.firstSheetName} was used.` : `Loaded ${woRows.length} application numbers from sheet ${parsed.firstSheetName}.`, parsed.usedFallbackHeader ? 'warning' : '');
+  } else {
+   woSourceFileName = 'manual-entry';
+   woRows = manualRows;
+   setWOStatus(`Loaded ${woRows.length} application numbers from manual entry.`, '');
+  }
+  const seen = new Set();
+  woRows = woRows.filter(v => { if (seen.has(v)) return false; seen.add(v); return true; });
+  setWOProgress(0, woRows.length);
+  for (let i = 0; i < woRows.length; i++) {
+   const application = woRows[i];
+   setWOStatus(`Processing ${i + 1} of ${woRows.length}: ${application}`, '');
+   woOutputRows.push(await fetchWOOnlyByApplication(application));
+   setWOProgress(i + 1, woRows.length);
+   renderWOPreview();
+   await new Promise(res => setTimeout(res, 120));
+  }
+  summariseWOResults();
+  const okCount = woOutputRows.filter(r => r.status === 'OK').length;
+  const failCount = woOutputRows.length - okCount;
+  setWOStatus(`WO-only run complete. ${okCount} application numbers returned OK, ${failCount} need review.`, failCount ? 'warning' : '');
+ } catch (e) {
+  console.error(e);
+  setWOStatus('WO-only processing failed: ' + e.message, 'error');
+ } finally {
+  updateWOButtons(false);
+ }
+}
+
+function downloadBulkTemplate(mode) {
+ if (typeof XLSX === 'undefined') return;
+ const wb = XLSX.utils.book_new();
+ const ws = XLSX.utils.aoa_to_sheet([
+  ['pams_application_number'],
+  ['AU2020233341'],
+  ['2020233342']
+ ]);
+ XLSX.utils.book_append_sheet(wb, ws, 'Input');
+ XLSX.writeFile(wb, mode === 'wo' ? 'WO-bulk-template.xlsx' : (mode === 'wuep' ? 'WO-US-EP-bulk-template.xlsx' : 'bulk-family-template.xlsx'));
+}
+
+
+function escapeHtml(value) {
+ return String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function formatPublicationLines(values) {
+ return (values || []).join('\n');
+}
+function shouldKeepPublicationByOffice(pub, office) {
+ if (!pub) return false;
+ const clean = String(pub).trim();
+ if (office === 'US' || office === 'EP') return !(/(?:[WPASFD])$/i.test(clean));
+ if (office === 'AU') return !(/(?:%|A)$/i.test(clean));
+ return true;
+}
+function collectOfficePublicationNumbersFromParsedFamily(parsedFamily, office) {
+ const seen = new Set();
+ const values = [];
+ (parsedFamily || []).forEach(function(item) {
+  if ((item.office || '') === office) {
+   const pub = (item.publicationNumber || '').trim();
+   if (pub && shouldKeepPublicationByOffice(pub, office) && !seen.has(pub)) {
+    seen.add(pub);
+    values.push(pub);
+   }
+  }
+ });
+ return values;
+}
+function countOfficePublications(textValue) {
+ if (!textValue) return 0;
+ return String(textValue).split('\n').map(function(s) { return s.trim(); }).filter(Boolean).length;
+}
+function renderOfficeCountString(row) {
+ const auCount = countOfficePublications(row.auPublications);
+ const woCount = countOfficePublications(row.woPublications);
+ const usCount = countOfficePublications(row.usPublications);
+ const epCount = countOfficePublications(row.epPublications);
+ return '<span class="office-count-inline">AU ' + auCount + '; WO ' + woCount + '; US ' + usCount + '; EP ' + epCount + '</span>';
+}
+function renderOfficeLines(textValue, cssClass) {
+ if (!textValue) return '<span class="bulk-empty">None</span>';
+ return '<div class="bulk-mono ' + (cssClass || '') + '">' + escapeHtml(textValue).replace(/\n/g, '<br>') + '</div>';
+}
+function pauseWUEPRun() {
+ if (!wuepIsProcessing) return;
+ wuepPauseRequested = true;
+ setWUEPStatus('Pause requested. The current request will finish, then the batch run will pause.', 'warning');
+ updateWUEPButtons(true);
+}
+async function resumeWUEPRun() {
+ if (!wuepPaused) return;
+ wuepPauseRequested = false;
+ wuepPaused = false;
+ setWUEPStatus('Re-authenticating after resume request.', '');
+ try { await ensureAuthenticated(true); } catch(e) {}
+ setWUEPStatus('Resuming AU / WO / US / EP batch run.', '');
+ updateWUEPButtons(true);
+}
+async function waitWhileWUEPPaused() {
+ if (wuepPauseRequested) {
+  wuepPaused = true;
+  updateWUEPButtons(true);
+ }
+ while (wuepPaused) {
+  setWUEPStatus('Batch run paused. Click Resume batch run to continue.', 'warning');
+  await new Promise(function(res) { setTimeout(res, 500); });
+ }
+}
+async function pauseBetweenBatches(ms, batchNumber, totalBatches, updateFn) {
+ const start = Date.now();
+ while (Date.now() - start < ms) {
+  if (wuepPauseRequested) {
+   wuepPaused = true;
+   updateWUEPButtons(true);
+  }
+  while (wuepPaused) {
+   updateFn('Batch run paused during the between-batches wait. Click Resume batch run to continue.', 'warning');
+   await new Promise(function(res) { setTimeout(res, 500); });
+  }
+  const remainingMs = Math.max(0, ms - (Date.now() - start));
+  const remainingSec = Math.ceil(remainingMs / 1000);
+  const mins = Math.floor(remainingSec / 60);
+  const secs = remainingSec % 60;
+  updateFn('Batch ' + batchNumber + ' of ' + totalBatches + ' complete. Pausing before the next batch, ' + mins + ':' + String(secs).padStart(2,'0') + ' remaining.', 'warning');
+  await new Promise(function(res) { setTimeout(res, Math.min(1000, remainingMs)); });
+ }
+}
+
+// ===== WO / US / EP TAB =====
+function setWUEPStatus(message, type) {
+ const el = document.getElementById('wuepStatus');
+ el.textContent = message;
+ el.className = 'bulk-status' + (type ? ' ' + type : '');
+}
+function setWUEPProgress(done, total) {
+ const pct = total ? Math.round((done / total) * 100) : 0;
+ document.getElementById('wuepProgressBar').style.width = pct + '%';
+ document.getElementById('wuepProgressText').textContent = done + ' of ' + (total || 0) + ' processed';
+ document.getElementById('wuepProgressPct').textContent = pct + '%';
+}
+function updateWUEPButtons(running) {
+ wuepIsProcessing = !!running;
+ document.getElementById('wuepRunBtn').disabled = wuepIsProcessing;
+ document.getElementById('wuepExcelInput').disabled = wuepIsProcessing;
+ document.getElementById('wuepManualInput').disabled = wuepIsProcessing;
+ document.getElementById('wuepDownloadBtn').disabled = wuepIsProcessing || !wuepOutputRows.length;
+ document.getElementById('wuepPauseBtn').disabled = !wuepIsProcessing || wuepPaused;
+ document.getElementById('wuepResumeBtn').disabled = !wuepPaused;
+}
+function renderWUEPPreview() {
+ const tbody = document.getElementById('wuepPreviewBody');
+ if (!wuepCurrentBatchRows.length) {
+  tbody.innerHTML = '<tr><td colspan="7" class="bulk-empty">No AU / WO / US / EP results yet.</td></tr>';
+  return;
+ }
+ tbody.innerHTML = wuepCurrentBatchRows.map(function(row, idx) {
+  const statusClass = row.status === 'OK' ? '' : ' class="bulk-mono"';
+  return '<tr>'
+   + '<td><div>' + (idx + 1) + '</div>' + renderOfficeCountString(row) + '</td>'
+   + '<td class="bulk-mono">' + escapeHtml(row.application) + '</td>'
+   + '<td>' + renderOfficeLines(row.auPublications, '') + '</td>'
+   + '<td>' + renderOfficeLines(row.woPublications, 'bulk-accent-wo') + '</td>'
+   + '<td>' + renderOfficeLines(row.usPublications, '') + '</td>'
+   + '<td>' + renderOfficeLines(row.epPublications, '') + '</td>'
+   + '<td' + statusClass + '>' + escapeHtml(row.status) + '</td>'
+   + '</tr>';
+ }).join('');
+}
+function summariseWUEPResults() {
+ const total = wuepOutputRows.length;
+ const auCount = wuepOutputRows.filter(function(r) { return r.auPublications; }).length;
+ const woCount = wuepOutputRows.filter(function(r) { return r.woPublications; }).length;
+ const usCount = wuepOutputRows.filter(function(r) { return r.usPublications; }).length;
+ const epCount = wuepOutputRows.filter(function(r) { return r.epPublications; }).length;
+ document.getElementById('wuepSummary').innerHTML = 'Processed <strong>' + total + '</strong> application numbers, with AU matches for <strong>' + auCount + '</strong>, WO matches for <strong>' + woCount + '</strong>, US matches for <strong>' + usCount + '</strong> and EP matches for <strong>' + epCount + '</strong> rows.';
+}
+function buildWUEPExportRows() {
+ return wuepOutputRows.map(function(row) {
+  return {
+   pams_application_number: row.application,
+   au_publications: row.auPublications || '',
+   wo_publications: row.woPublications || '',
+   us_publications: row.usPublications || '',
+   ep_publications: row.epPublications || ''
+  };
+ });
+}
+function applyWrapTextHints(ws, columns) {
+ ws['!cols'] = columns.map(function(wch) { return { wch: wch }; });
+}
+function downloadWUEPResults() {
+ if (!wuepOutputRows.length) { setWUEPStatus('There are no AU / WO / US / EP results to download yet.', 'warning'); return; }
+ const wb = XLSX.utils.book_new();
+ const mainRows = buildWUEPExportRows();
+ const wsMain = XLSX.utils.json_to_sheet(mainRows);
+ applyWrapTextHints(wsMain, [24, 42, 42, 42, 42]);
+ XLSX.utils.book_append_sheet(wb, wsMain, 'AU_WO_US_EP Results');
+ const wsLog = XLSX.utils.json_to_sheet(wuepOutputRows.map(function(r) {
+  return {
+   pams_application_number: r.application,
+   au_publications: r.auPublications || '',
+   wo_publications: r.woPublications || '',
+   us_publications: r.usPublications || '',
+   ep_publications: r.epPublications || '',
+   status: r.status,
+   matched_endpoint: r.matchedEndpoint || ''
+  };
+ }));
+ applyWrapTextHints(wsLog, [24, 42, 42, 42, 42, 18, 28]);
+ XLSX.utils.book_append_sheet(wb, wsLog, 'Processing Log');
+ const stamp = new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-');
+ const base = (wuepSourceFileName || 'au-wo-us-ep-bulk-input').replace(/\.[^.]+$/, '');
+ XLSX.writeFile(wb, base + '-AU_WO_US_EP-' + stamp + '.xlsx');
+}
+async function fetchWUEPByApplication(appNumber) {
+ const candidates = buildApplicationQueryCandidates(appNumber);
+ if (!candidates.length) return { application: appNumber, auPublications: '', woPublications: '', usPublications: '', epPublications: '', status: 'Invalid application number format', matchedEndpoint: '' };
+ const guard = normaliseApplicationNumber(appNumber);
+ if (guard.length > 40) return { application: appNumber, auPublications: '', woPublications: '', usPublications: '', epPublications: '', status: 'Skipped, input too long', matchedEndpoint: '' };
+ let lastError = null;
+ for (const candidate of candidates) {
+  try {
+   const url = 'https://ops.epo.org/3.2/rest-services/family/application/' + candidate.format + '/' + candidate.number + '/biblio';
+   const data = await apiCall(url);
+   const parsedFamily = parseBiblioResponse(data) || [];
+   const auPubs = collectOfficePublicationNumbersFromParsedFamily(parsedFamily, 'AU');
+   const woPubs = collectOfficePublicationNumbersFromParsedFamily(parsedFamily, 'WO');
+   const usPubs = collectOfficePublicationNumbersFromParsedFamily(parsedFamily, 'US');
+   const epPubs = collectOfficePublicationNumbersFromParsedFamily(parsedFamily, 'EP');
+   return {
+    application: appNumber,
+    auPublications: formatPublicationLines(auPubs),
+    woPublications: formatPublicationLines(woPubs),
+    usPublications: formatPublicationLines(usPubs),
+    epPublications: formatPublicationLines(epPubs),
+    status: 'OK',
+    matchedEndpoint: 'biblio ' + candidate.format + '/' + candidate.number
+   };
+  } catch (e) {
+   lastError = e;
+   if (String(e.message || '').includes('413')) {
+    try {
+     const url2 = 'https://ops.epo.org/3.2/rest-services/family/application/' + candidate.format + '/' + candidate.number;
+     const xml = await apiCall(url2, true);
+     const all = extractFamilyPublicationNumbersFromXml(xml || '');
+     const auPubs2 = all.filter(function(pub) { return pub.startsWith('AU') && shouldKeepPublicationByOffice(pub, 'AU'); });
+     const woPubs2 = all.filter(function(pub) { return pub.startsWith('WO') && shouldKeepPublicationByOffice(pub, 'WO'); });
+     const usPubs2 = all.filter(function(pub) { return pub.startsWith('US') && shouldKeepPublicationByOffice(pub, 'US'); });
+     const epPubs2 = all.filter(function(pub) { return pub.startsWith('EP') && shouldKeepPublicationByOffice(pub, 'EP'); });
+     return {
+      application: appNumber,
+      auPublications: formatPublicationLines(auPubs2),
+      woPublications: formatPublicationLines(woPubs2),
+      usPublications: formatPublicationLines(usPubs2),
+      epPublications: formatPublicationLines(epPubs2),
+      status: 'OK',
+      matchedEndpoint: 'family ' + candidate.format + '/' + candidate.number
+     };
+    } catch (e2) {
+     lastError = e2;
+    }
+   }
+  }
+ }
+ return { application: appNumber, auPublications: '', woPublications: '', usPublications: '', epPublications: '', status: lastError ? lastError.message : 'No AU / WO / US / EP publications found', matchedEndpoint: '' };
+}
+async function processWUEPBulk() {
+ if (wuepIsProcessing) return;
+ if (typeof XLSX === 'undefined') { setWUEPStatus('The Excel library did not load. Please check your network connection and reload.', 'error'); return; }
+ const file = (document.getElementById('wuepExcelInput').files || [])[0];
+ const manualRows = readManualRows('wuepManualInput');
+ if (!file && !manualRows.length) { setWUEPStatus('Choose an Excel workbook or paste at least one application number in the manual list.', 'warning'); return; }
+ wuepPauseRequested = false;
+ wuepPaused = false;
+ wuepOutputRows = [];
+ wuepCurrentBatchRows = [];
+ document.getElementById('wuepPreviewBody').innerHTML = '<tr><td colspan="7" class="bulk-empty">No AU / WO / US / EP results yet.</td></tr>';
+ document.getElementById('wuepSummary').textContent = '';
+ setWUEPProgress(0, 0);
+ updateWUEPButtons(true);
+ switchTab('wuep');
+ try {
+  if (file) {
+   wuepSourceFileName = file.name;
+   const parsed = await readInputRowsFromFile(file);
+   wuepRows = parsed.rows;
+   if (!wuepRows.length) { setWUEPStatus('No non-empty application numbers were found in the selected workbook.', 'warning'); updateWUEPButtons(false); return; }
+   setWUEPStatus(parsed.usedFallbackHeader ? 'Column A header was not exactly pams_application_number, so the first column from sheet ' + parsed.firstSheetName + ' was used.' : 'Loaded ' + wuepRows.length + ' application numbers from sheet ' + parsed.firstSheetName + '.', parsed.usedFallbackHeader ? 'warning' : '');
+  } else {
+   wuepSourceFileName = 'manual-entry';
+   wuepRows = manualRows;
+   setWUEPStatus('Loaded ' + wuepRows.length + ' application numbers from manual entry.', '');
+  }
+  const seen = new Set();
+  wuepRows = wuepRows.filter(function(v) { if (seen.has(v)) return false; seen.add(v); return true; });
+  const total = wuepRows.length;
+  const totalBatches = Math.ceil(total / BULK_BATCH_SIZE) || 1;
+  setWUEPProgress(0, total);
+  let processed = 0;
+  for (let batchStart = 0; batchStart < total; batchStart += BULK_BATCH_SIZE) {
+   const batchIndex = Math.floor(batchStart / BULK_BATCH_SIZE) + 1;
+   const batch = wuepRows.slice(batchStart, batchStart + BULK_BATCH_SIZE);
+   wuepCurrentBatchRows = [];
+   renderWUEPPreview();
+   setWUEPStatus('Re-authenticating before batch ' + batchIndex + ' of ' + totalBatches + '.', '');
+   await ensureAuthenticated(true);
+   setWUEPStatus('Starting batch ' + batchIndex + ' of ' + totalBatches + '.', '');
+   for (let i = 0; i < batch.length; i++) {
+    await waitWhileWUEPPaused();
+    const application = batch[i];
+    setWUEPStatus('Batch ' + batchIndex + ' of ' + totalBatches + ', processing ' + (processed + 1) + ' of ' + total + ': ' + application, '');
+    const rowResult = await fetchWUEPByApplication(application);
+    wuepOutputRows.push(rowResult);
+    wuepCurrentBatchRows.push(rowResult);
+    processed += 1;
+    setWUEPProgress(processed, total);
+    renderWUEPPreview();
+    await new Promise(function(res) { setTimeout(res, 180); });
+   }
+   if (processed < total) {
+    await pauseBetweenBatches(BULK_BATCH_PAUSE_MS, batchIndex, totalBatches, setWUEPStatus);
+   }
+  }
+  summariseWUEPResults();
+  const okCount = wuepOutputRows.filter(function(r) { return r.status === 'OK'; }).length;
+  const failCount = wuepOutputRows.length - okCount;
+  setWUEPStatus('AU / WO / US / EP run complete. ' + okCount + ' application numbers returned OK, ' + failCount + ' need review.', failCount ? 'warning' : '');
+ } catch (e) {
+  console.error(e);
+  setWUEPStatus('AU / WO / US / EP processing failed: ' + e.message, 'error');
+ } finally {
+  wuepPauseRequested = false;
+  wuepPaused = false;
+  updateWUEPButtons(false);
+ }
+}
+
+// ===== DEMO =====
+function loadDemoData() {
+    const input = document.getElementById('pubNumber').value.trim() || 'AU2020233341';
+    const pubNumber = normaliseNumber(input);
+    document.getElementById('pubNumber').value = pubNumber;
+    updateExternalLinks(pubNumber); hideBanner();
+
+    familyData = [
+        { office:'WO', applicationNumber:'PCT/JP2020/007204', publicationNumber:'WO2020179517A1', publicationDate:'10 Sep 2020', kind:'A1', status:'Published', lastUpdate:'19 May 2026', lastActionDate:'10 Mar 2021', lastActionCode:'NENP', lastAction:'National phase entry time limit expired', legalEvents:[{date:'10 Mar 2021',rawDate:'20210310',code:'NENP',description:'National phase entry time limit expired'}], globalDossierUrl:'https://globaldossier.uspto.gov/#!/result/application/WO/PCT%2FJP2020%2F007204/1' },
+        { office:'AU', applicationNumber:'AU2020233341', publicationNumber:'AU2020233341A1', publicationDate:'7 Oct 2021', kind:'A1', status:'Published', lastUpdate:'19 May 2026', lastActionDate:'4 Dec 2025', lastActionCode:'FGA', lastAction:'Letters patent sealed or granted', legalEvents:[{date:'4 Dec 2025',rawDate:'20251204',code:'FGA',description:'Letters patent sealed or granted'}], globalDossierUrl:'https://globaldossier.uspto.gov/result/application/CASE/AU2020233341/74305' },
+        { office:'AU', applicationNumber:'AU2020233341', publicationNumber:'AU2020233341B2', publicationDate:'4 Dec 2025', kind:'B2', status:'Granted', lastUpdate:'19 May 2026', lastActionDate:'4 Dec 2025', lastActionCode:'FGA', lastAction:'Patent granted', legalEvents:[{date:'4 Dec 2025',rawDate:'20251204',code:'FGA',description:'Patent granted'}], globalDossierUrl:'https://globaldossier.uspto.gov/result/application/CASE/AU2020233341/74305' },
+        { office:'US', applicationNumber:'US202017432755', publicationNumber:'US20220143582A1', publicationDate:'12 May 2022', kind:'A1', status:'Published', lastUpdate:'19 May 2026', lastActionDate:'23 Aug 2021', lastActionCode:'AS', lastAction:'Assignment — Shin-Etsu Chemical Co., Ltd.', legalEvents:[{date:'23 Aug 2021',rawDate:'20210823',code:'AS',description:'Assignment — Shin-Etsu Chemical Co., Ltd.'}], globalDossierUrl:'https://globaldossier.uspto.gov/#!/result/application/US/17432755/1' },
+        { office:'US', applicationNumber:'US202017432755', publicationNumber:'US12097484B2', publicationDate:'24 Sep 2024', kind:'B2', status:'Granted', lastUpdate:'19 May 2026', lastActionDate:'24 Sep 2024', lastActionCode:'B2', lastAction:'Patent issued', legalEvents:[{date:'24 Sep 2024',rawDate:'20240924',code:'B2',description:'Patent issued'}], globalDossierUrl:'https://globaldossier.uspto.gov/#!/result/application/US/17432755/1' },
+        { office:'CN', applicationNumber:'CN202080018251', publicationNumber:'CN113544094A', publicationDate:'22 Oct 2021', kind:'A', status:'Published', lastUpdate:'19 May 2026', lastActionDate:'22 Oct 2021', lastActionCode:'PB01', lastAction:'Publication of application', legalEvents:[{date:'22 Oct 2021',rawDate:'20211022',code:'PB01',description:'Publication of application'}], globalDossierUrl:'https://globaldossier.uspto.gov/details/CN/202080018251/A/95954' },
+        { office:'CN', applicationNumber:'CN202080018251', publicationNumber:'CN113544094B', publicationDate:'29 Aug 2023', kind:'B', status:'Granted', lastUpdate:'19 May 2026', lastActionDate:'29 Aug 2023', lastActionCode:'GR01', lastAction:'Patent granted', legalEvents:[{date:'29 Aug 2023',rawDate:'20230829',code:'GR01',description:'Patent granted'}], globalDossierUrl:'https://globaldossier.uspto.gov/details/CN/202080018251/A/95954' },
+        { office:'JP', applicationNumber:'JP2019038452', publicationNumber:'JP2020142936A', publicationDate:'10 Sep 2020', kind:'A', status:'Published', lastUpdate:'19 May 2026', lastActionDate:'22 Nov 2019', lastActionCode:'RD02', lastAction:'Notification of acceptance of power of attorney', legalEvents:[{date:'22 Nov 2019',rawDate:'20191122',code:'RD02',description:'Notification of acceptance of power of attorney'}], globalDossierUrl:'https://globaldossier.uspto.gov/details/JP/2019038452/A/125585' },
+        { office:'JP', applicationNumber:'JP2019038452', publicationNumber:'JP7070474B2', publicationDate:'18 May 2022', kind:'B2', status:'Granted', lastUpdate:'19 May 2026', lastActionDate:'18 May 2022', lastActionCode:'R150', lastAction:'Patent registered', legalEvents:[{date:'18 May 2022',rawDate:'20220518',code:'R150',description:'Patent registered'}], globalDossierUrl:'https://globaldossier.uspto.gov/details/JP/2019038452/A/125585' },
+        { office:'KR', applicationNumber:'KR20217031264', publicationNumber:'KR20210132168A', publicationDate:'3 Nov 2021', kind:'A', status:'Published', lastUpdate:'19 May 2026', lastActionDate:'1 Dec 2024', lastActionCode:'E902', lastAction:'Notification of reason for refusal', legalEvents:[{date:'1 Dec 2024',rawDate:'20241201',code:'E902',description:'Notification of reason for refusal'}], globalDossierUrl:'https://globaldossier.uspto.gov/#!/result/application/KR/20217031264/1' },
+        { office:'KR', applicationNumber:'KR20217031264', publicationNumber:'KR102857820B1', publicationDate:'10 Sep 2025', kind:'B1', status:'Granted', lastUpdate:'19 May 2026', lastActionDate:'10 Sep 2025', lastActionCode:'E701', lastAction:'Decision to grant', legalEvents:[{date:'10 Sep 2025',rawDate:'20250910',code:'E701',description:'Decision to grant'}], globalDossierUrl:'https://globaldossier.uspto.gov/#!/result/application/KR/20217031264/1' },
+        { office:'TW', applicationNumber:'TW109106859', publicationNumber:'TW202102441A', publicationDate:'16 Jan 2021', kind:'A', status:'Published', lastUpdate:'19 May 2026', lastActionDate:'', lastActionCode:'', lastAction:'', legalEvents:[], globalDossierUrl:'https://globaldossier.uspto.gov/#!/result/application/TW/109106859/1' },
+        { office:'TW', applicationNumber:'TW109106859', publicationNumber:'TWI849069B', publicationDate:'21 Jul 2024', kind:'B', status:'Granted', lastUpdate:'19 May 2026', lastActionDate:'21 Jul 2024', lastActionCode:'GRANT', lastAction:'Patent granted', legalEvents:[{date:'21 Jul 2024',rawDate:'20240721',code:'GRANT',description:'Patent granted'}], globalDossierUrl:'https://globaldossier.uspto.gov/#!/result/application/TW/109106859/1' }
+    ];
+
+    legalEvents = {};
+    familyData.forEach(item => { if (item.legalEvents?.length) legalEvents[item.publicationNumber] = item.legalEvents; });
+    renderResults(pubNumber);
+    showBanner(`✓ Demo — AU2020233341 — ${familyData.length} publications, ${[...new Set(familyData.map(d=>d.office))].length} offices. ${familyData.filter(d=>d.lastAction).length} legal events.`, 'success');
+}
+
+// ===== EVENTS =====
+document.getElementById('pubNumber').addEventListener('keypress', e => { if (e.key === 'Enter') searchFamily(); });
+document.addEventListener('click', e => {
+    if (!e.target.closest('.export-menu')) document.getElementById('exportDropdown').classList.remove('active');
+    if (e.target.classList.contains('modal-overlay')) closeDocModal();
+});
+detectUser();
+initHardcodedApiCredentials();
+authenticate().catch(function(){ /* embedded credentials loaded, manual reconnect remains available */ });
+switchTab('single');
+
+// Bulk input wiring
+document.getElementById('bulkExcelInput').addEventListener('change', function(){
+ if (this.files && this.files[0]) {
+  bulkSourceFileName = this.files[0].name;
+  setBulkStatus('Selected file: ' + this.files[0].name, '');
+  const t = document.getElementById('bulkManualInput'); if (t) t.value = '';
+ } else {
+  setBulkStatus('No file or manual list loaded yet.', '');
+ }
+});
+document.getElementById('bulkManualInput').addEventListener('input', function(){
+ const hasText = (this.value || '').trim().length > 0;
+ if (hasText) {
+  const f = document.getElementById('bulkExcelInput'); if (f) f.value = '';
+  bulkSourceFileName = 'manual-entry';
+  setBulkStatus('Manual list ready. Click Run bulk family analysis.', '');
+ }
+});
+
+// WO input wiring
+document.getElementById('woExcelInput').addEventListener('change', function(){
+ if (this.files && this.files[0]) {
+  woSourceFileName = this.files[0].name;
+  setWOStatus('Selected file: ' + this.files[0].name, '');
+  const t = document.getElementById('woManualInput'); if (t) t.value = '';
+ } else {
+  setWOStatus('No file or manual list loaded yet.', '');
+ }
+});
+document.getElementById('woManualInput').addEventListener('input', function(){
+ const hasText = (this.value || '').trim().length > 0;
+ if (hasText) {
+  const f = document.getElementById('woExcelInput'); if (f) f.value = '';
+  woSourceFileName = 'manual-entry';
+  setWOStatus('Manual list ready. Click Run WO-only check.', '');
+ }
+});
+</script>
+</body>
+</html>
